@@ -1,0 +1,3566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    
+
+    
+
+    
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlotMySpace — AI Architectural Planning System</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg-primary:    #0e0e10;
+      --bg-secondary:  #18181b;
+      --bg-card:       #1c1c1f;
+      --bg-hover:      #26262b;
+      --border:        #2e2e33;
+      --text-primary:  #f0f0f2;
+      --text-secondary:#9b9ba4;
+      --text-muted:    #5a5a63;
+      --accent:        #7c6af7;
+      --accent-hover:  #6a5ae0;
+      --success:       #22c55e;
+      --warning:       #f59e0b;
+      --danger:        #ef4444;
+      --teal:          #14b8a6;
+      --amber:         #f59e0b;
+      --sidebar-w:     240px;
+      --topbar-h:      56px;
+      --transition:    150ms ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* Custom Sleek Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--bg-hover); }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Layout ── */
+    .app { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 20px 20px 24px;
+      font-weight: 700; font-size: 16px;
+      color: var(--accent);
+    }
+    .logo-icon { font-size: 20px; }
+
+    .nav-list { list-style: none; padding: 0 12px; flex: 1; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; margin-bottom: 4px;
+      border-radius: 8px; cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 14px; font-weight: 500;
+      transition: background var(--transition), color var(--transition);
+      user-select: none;
+      position: relative;
+    }
+    .nav-item:hover:not(.locked) { background: var(--bg-hover); color: var(--text-primary); }
+    .nav-item.active { background: var(--accent); color: #fff; }
+    .nav-item.locked { opacity: 0.4; cursor: not-allowed; }
+    .nav-icon { width: 20px; text-align: center; font-size: 15px; }
+
+    .nav-item .lock-indicator {
+      margin-left: auto;
+      font-size: 11px;
+      transition: opacity var(--transition);
+    }
+    .nav-item:not(.locked) .lock-indicator {
+      opacity: 0;
+      pointer-events: none;
+      display: none;
+    }
+
+    .pipeline-strip {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+    .pipeline-strip-label {
+      font-size: 11px; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+    .pipeline-dots { display: flex; gap: 8px; justify-content: center; }
+    .pipeline-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s ease;
+      cursor: help;
+    }
+    .pipeline-dot.running { background: var(--amber); animation: pulse 1s infinite; }
+    .pipeline-dot.done { background: var(--success); }
+    .pipeline-dot.error { background: var(--danger); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      display: flex; flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      height: var(--topbar-h);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px;
+      background: var(--bg-primary);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .breadcrumb { font-size: 14px; color: var(--text-secondary); }
+    .breadcrumb span { color: var(--text-primary); font-weight: 500; }
+    .topbar-actions { display: flex; align-items: center; gap: 12px; }
+
+    .status-chip {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 500;
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
+    .status-chip.running .status-dot { background: var(--amber); }
+    .status-chip.complete .status-dot { background: var(--success); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      font-family: inherit; cursor: pointer;
+      border: none; transition: background var(--transition), opacity var(--transition);
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-secondary {
+      background: transparent; color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover:not(:disabled) { background: var(--bg-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #16a34a; }
+
+    .content {
+      flex: 1; padding: 24px;
+      opacity: 1; transition: opacity 200ms ease;
+    }
+    .content.fade-out { opacity: 0; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Shared components ── */
+    .badge {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 4px; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .badge-draft { background: rgba(124,106,247,0.15); color: var(--accent); }
+    .badge-confirmed { background: rgba(34,197,94,0.15); color: var(--success); }
+    .badge-pending { background: rgba(90,90,99,0.2); color: var(--text-muted); }
+    .badge-running { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .badge-generated { background: rgba(34,197,94,0.15); color: var(--success); }
+    .badge-sat { background: rgba(34,197,94,0.15); color: var(--success); }
+    .badge-unsat { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .card-accent-left { border-left: 3px solid var(--accent); }
+
+    .section-title {
+      font-size: 15px; font-weight: 600;
+      margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .progress-bar-wrap {
+      height: 4px; background: var(--border);
+      border-radius: 2px; overflow: hidden; margin: 12px 0;
+    }
+    .progress-bar {
+      height: 100%; background: var(--accent);
+      border-radius: 2px; width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .stat-bar-wrap {
+      height: 6px; background: var(--border);
+      border-radius: 3px; overflow: hidden; margin-top: 4px;
+    }
+    .stat-bar { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+    .stat-bar.green { background: var(--success); }
+    .stat-bar.amber { background: var(--warning); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--text-muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+    tr.highlight { background: rgba(124,106,247,0.08); }
+    .delta-green { color: var(--success); }
+    .delta-amber { color: var(--warning); }
+    .delta-danger { color: var(--danger); }
+    .priority-star { color: var(--accent); }
+
+    /* Brief Card Slide-in Animation */
+    .brief-card {
+      animation: slideInCard 0.4s ease forwards;
+    }
+    @keyframes slideInCard {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Plot Design ── */
+    .plot-grid { display: grid; grid-template-columns: 48% 52%; gap: 20px; height: calc(100vh - var(--topbar-h) - 48px); }
+    .plot-controls { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+    .plot-canvas-container {
+      display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: flex-start;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; position: relative;
+    }
+    #plotEditorCanvas {
+      max-width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-secondary);
+      display: block;
+    }
+
+    /* Modal Alert Styles */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 400;
+      align-items: center; justify-content: center; backdrop-filter: blur(4px);
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-card {
+      background: var(--bg-card); border: 1px solid var(--danger); border-radius: 12px;
+      width: 90%; max-width: 450px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      animation: modalFadeIn 0.3s ease;
+    }
+    @keyframes modalFadeIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-title { font-size: 16px; font-weight: 700; color: var(--danger); }
+    .modal-close { background: transparent; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-body { font-size: 14px; color: var(--text-primary); line-height: 1.6; margin-bottom: 24px; }
+    .modal-footer { display: flex; justify-content: flex-end; }
+
+    /* ── Planning ── */
+    .planning-grid { display: grid; grid-template-columns: 55% 45%; gap: 20px; height: calc(100vh - var(--topbar-h) - 48px); }
+    .chat-panel { display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .msg { max-width: 85%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+    .msg-agent { align-self: flex-start; background: var(--bg-hover); color: var(--text-primary); border-bottom-left-radius: 4px; }
+    .msg-user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .chat-input-bar { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
+    .chat-input-bar textarea {
+      flex: 1; resize: none; height: 44px;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+      color: var(--text-primary); font-family: inherit; font-size: 13px;
+    }
+    .chat-input-bar textarea:focus { outline: none; border-color: var(--accent); }
+    .brief-panel { overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+    .brief-cards { display: flex; flex-direction: column; gap: 12px; }
+    .brief-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-secondary); }
+    .brief-card p, .brief-card li { font-size: 13px; color: var(--text-primary); line-height: 1.6; }
+    .brief-card ul { padding-left: 18px; }
+    .room-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; background: var(--bg-hover); margin: 2px; }
+
+    /* ── Intake ── */
+    .intake-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
+    .form-group input, .form-group textarea {
+      width: 100%; background: var(--bg-secondary);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; color: var(--text-primary);
+      font-family: inherit; font-size: 13px;
+    }
+    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+    .lot-canvas-wrap { text-align: center; margin-top: 16px; }
+    .lot-canvas-wrap canvas { border: 1px solid var(--border); border-radius: 8px; background: var(--bg-secondary); }
+    .code-viewer {
+      background: #121214; border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; overflow: auto;
+      max-height: 420px; font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px; line-height: 1.6;
+    }
+    .json-key { color: #7c6af7; }
+    .json-string { color: #22c55e; }
+    .json-number { color: #f59e0b; }
+    .json-bool { color: #14b8a6; }
+    .metrics-row { display: flex; gap: 24px; margin-top: 16px; font-size: 13px; }
+    .metrics-row span { color: var(--text-secondary); }
+    .metrics-row strong { color: var(--text-primary); }
+
+    /* ── Layouts / Concept Pitcher ── */
+    .gen-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .gen-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px; text-align: center;
+      opacity: 0; transform: translateY(10px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .gen-card.visible { opacity: 1; transform: translateY(0); }
+    .gen-letter { font-size: 32px; font-weight: 700; color: var(--accent); }
+    .gen-name { font-size: 14px; font-weight: 600; margin: 8px 0; }
+    .gen-status { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+    .option-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+    .option-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px;
+      transition: opacity 0.3s ease, border-color 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .option-card.selected { border-color: var(--success); box-shadow: 0 0 0 1px var(--success); }
+    .option-card.dimmed { opacity: 0.4; }
+    .option-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .option-body { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; flex: 1; }
+    .option-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 8px; }
+    
+    .ratio-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .ratio-badge.green { background: rgba(34,197,94,0.15); color: var(--success); }
+    .ratio-badge.amber { background: rgba(245,158,11,0.15); color: var(--warning); }
+
+    .hitl-bar {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+      min-height: 60px;
+    }
+    .hitl-bar input {
+      flex: 1; background: var(--bg-secondary);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; color: var(--text-primary);
+      font-family: inherit; font-size: 13px;
+    }
+    .hitl-bar input:focus { outline: none; border-color: var(--accent); }
+
+    .hitl-warning {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--warning);
+      font-size: 13px;
+      font-weight: 500;
+      width: 100%;
+      justify-content: center;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px dashed rgba(245, 158, 11, 0.25);
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .round-counter { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+    .confirm-bar {
+      position: fixed; bottom: 0; left: var(--sidebar-w); right: 0;
+      background: var(--bg-card); border-top: 1px solid var(--success);
+      padding: 16px 24px; text-align: center;
+      transform: translateY(100%); transition: transform 0.3s ease;
+      z-index: 90; color: var(--success); font-weight: 500;
+    }
+    .confirm-bar.visible { transform: translateY(0); }
+
+    /* ── Verification ── */
+    .verify-grid { display: grid; grid-template-columns: 45% 55%; gap: 20px; }
+    .check-list { list-style: none; }
+    .check-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      font-size: 13px; opacity: 0;
+      animation: fadeIn 0.3s ease forwards;
+      position: relative;
+      cursor: help;
+    }
+    
+    /* Sleek CSS Tooltip */
+    .check-item::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translate(10px, -50%);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .check-item:hover::after {
+      opacity: 1;
+      transform: translate(15px, -50%);
+    }
+    @keyframes fadeIn { to { opacity: 1; } }
+    .check-icon { width: 20px; text-align: center; }
+    .check-pass { color: var(--success); }
+    .check-fail { color: var(--danger); }
+    .check-pending { color: var(--text-muted); }
+    .surgeon-log {
+      background: #121214; border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px; max-height: 380px;
+      overflow-y: auto; font-family: monospace; font-size: 12px;
+      line-height: 1.8; color: var(--text-secondary);
+      margin-top: 16px;
+    }
+    .surgeon-log .log-line { opacity: 0; animation: fadeIn 0.3s ease forwards; }
+    .surgeon-log .log-success { color: var(--success); }
+    .surgeon-log .log-divider { color: var(--border); }
+    .floor-canvas-wrap { position: relative; }
+    .floor-canvas-wrap canvas {
+      width: 100%; min-height: 450px;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: var(--bg-secondary);
+    }
+
+    /* ── Output ── */
+    .output-grid { display: grid; grid-template-columns: 40% 60%; gap: 20px; }
+    .summary-card { margin-bottom: 20px; }
+    .summary-stat { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .summary-stat:last-child { border-bottom: none; }
+    .summary-stat .label { color: var(--text-secondary); }
+    .layer-list { list-style: none; }
+    .layer-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
+    .layer-swatch { width: 14px; height: 14px; border-radius: 3px; }
+    .download-btns { display: flex; gap: 12px; margin-top: 16px; }
+    .output-canvas-wrap { position: relative; }
+    .output-canvas-wrap canvas {
+      width: 100%; min-height: 500px;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: var(--bg-secondary);
+    }
+    .fullscreen-btn {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(0,0,0,0.6); color: #fff;
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 6px 12px; font-size: 12px; cursor: pointer;
+      font-family: inherit;
+    }
+    .fullscreen-btn:hover { background: rgba(0,0,0,0.8); }
+    .fullscreen-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.92); z-index: 200;
+      flex-direction: column; align-items: center; justify-content: center;
+    }
+    .fullscreen-overlay.active { display: flex; }
+    .fullscreen-overlay canvas { max-width: 95vw; max-height: 90vh; border: 1px solid var(--border); }
+    .fullscreen-close {
+      position: absolute; top: 20px; right: 20px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-primary); padding: 8px 16px;
+      border-radius: 8px; cursor: pointer; font-family: inherit;
+    }
+
+    /* ── Toast ── */
+    .toast-container {
+      position: fixed; top: 16px; right: 16px;
+      z-index: 300; display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px;
+      font-size: 13px; min-width: 260px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      animation: slideIn 0.3s ease forwards;
+      border-left: 3px solid var(--accent);
+    }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.warning { border-left-color: var(--warning); }
+    .toast.info { border-left-color: var(--accent); }
+    @keyframes slideIn {
+      from { transform: translateX(120%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(120%); opacity: 0; }
+    }
+
+    .bottom-action { margin-top: 20px; text-align: center; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100%; height: auto; position: fixed; bottom: 0; top: auto;
+        flex-direction: row; border-right: none; border-top: 1px solid var(--border);
+      }
+      .logo, .pipeline-strip { display: none; }
+      .nav-list { display: flex; padding: 8px; width: 100%; justify-content: space-around; }
+      .nav-item { flex-direction: column; gap: 4px; padding: 8px; font-size: 10px; position: relative; }
+      .nav-item .nav-label { display: none; }
+      .nav-item .lock-indicator {
+        position: absolute;
+        top: 4px;
+        right: 12px;
+        font-size: 9px;
+        margin-left: 0;
+      }
+      .main { margin-left: 0; margin-bottom: 60px; }
+      .planning-grid, .intake-grid, .verify-grid, .output-grid,
+      .option-cards, .gen-strip { grid-template-columns: 1fr; }
+      .option-body { grid-template-columns: 1fr; }
+      .confirm-bar { left: 0; }
+      .hitl-bar { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-icon">⌂</span>
+        <span>PlotMySpace</span>
+      </div>
+      <ul class="nav-list" id="navList">
+        <li class="nav-item active" data-page="plot-design"><span class="nav-icon">⛶</span><span class="nav-label">Plot Design</span></li>
+        <li class="nav-item locked" data-page="planning"><span class="nav-icon">⬡</span><span class="nav-label">Planning</span><span class="lock-indicator">🔒</span></li>
+        <li class="nav-item locked" data-page="pitcher"><span class="nav-icon">▦</span><span class="nav-label">Pitch & Pack</span><span class="lock-indicator">🔒</span></li>
+        <li class="nav-item locked" data-page="output"><span class="nav-icon">⬡</span><span class="nav-label">Output</span><span class="lock-indicator">🔒</span></li>
+      </ul>
+      <div class="pipeline-strip">
+        <div class="pipeline-strip-label">Pipeline status</div>
+        <div class="pipeline-dots" id="pipelineDots">
+          <div class="pipeline-dot" data-phase="0" title="Plot Design"></div>
+          <div class="pipeline-dot" data-phase="1" title="Planning"></div>
+          <div class="pipeline-dot" data-phase="2" title="Pitch & Pack"></div>
+          <div class="pipeline-dot" data-phase="3" title="Output"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">PlotMySpace / <span id="breadcrumbPage">Plot Design</span></div>
+        <div class="topbar-actions">
+          <div class="status-chip" id="statusChip"><span class="status-dot"></span><span id="statusText">Idle</span></div>
+          <button class="btn btn-primary" id="runPipelineBtn">▶ Run Pipeline</button>
+        </div>
+      </header>
+
+      <div class="content" id="mainContent">
+        <!-- PAGE 0: PLOT DESIGN -->
+        <div class="page active" id="page-plot-design">
+          <div class="plot-grid">
+            <div class="plot-controls">
+              
+              <!-- Presets Card -->
+              <div class="card" style="margin-bottom: 4px;">
+                <h3 class="section-title" style="margin-bottom: 8px;">Plot Presets</h3>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button class="btn btn-secondary preset-btn" data-preset="rectangle" style="padding: 6px 12px; font-size: 12px;">Rectangle (70×80 ft)</button>
+                  <button class="btn btn-secondary preset-btn" data-preset="lshape" style="padding: 6px 12px; font-size: 12px;">L-Shape Lot</button>
+                  <button class="btn btn-secondary preset-btn" data-preset="tshape" style="padding: 6px 12px; font-size: 12px;">T-Shape Lot</button>
+                  <button class="btn btn-secondary preset-btn" data-preset="custom" style="padding: 6px 12px; font-size: 12px;">Custom Square</button>
+                </div>
+              </div>
+
+              <!-- Tree Protection Zone Card -->
+              <div class="card" style="margin-bottom: 4px;">
+                <h3 class="section-title" style="margin-bottom: 8px;">Tree Protection Zone</h3>
+                <div class="form-row" style="gap: 8px; margin-bottom: 0;">
+                  <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                    <label style="font-size: 11px; margin-bottom: 4px;">Tree Center X (ft)</label>
+                    <input type="number" id="treeX" value="75" min="0" max="150" style="padding: 6px 10px;">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                    <label style="font-size: 11px; margin-bottom: 4px;">Tree Center Y (ft)</label>
+                    <input type="number" id="treeY" value="88" min="0" max="150" style="padding: 6px 10px;">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                    <label style="font-size: 11px; margin-bottom: 4px;">Tree Radius (ft)</label>
+                    <input type="number" id="treeRadius" value="12" min="0" max="50" style="padding: 6px 10px;">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Manual Coordinates Textarea Card -->
+              <div class="card" style="margin-bottom: 4px;">
+                <h3 class="section-title" style="margin-bottom: 8px;">Manual Coordinates (JSON)</h3>
+                <div class="form-group" style="margin-bottom: 6px;">
+                  <textarea id="plotCoordsJson" rows="2" style="font-family: monospace; font-size: 11px; padding: 6px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; resize: vertical;" placeholder="[[x1,y1],[x2,y2],...]"></textarea>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; color: var(--text-secondary);">Double-click edge to split. Drag vertices.</span>
+                  <button class="btn btn-secondary" id="clearVerticesBtn" style="padding: 4px 8px; font-size: 11px;">Clear All</button>
+                </div>
+              </div>
+
+              <!-- Coordinate Table Card -->
+              <div class="card" style="margin-bottom: 4px;">
+                <h3 class="section-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                  <span>Vertex Coordinates</span>
+                  <button class="btn btn-primary" id="addVertexBtn" style="padding: 4px 8px; font-size: 11px;">+ Add Vertex</button>
+                </h3>
+                <div style="max-height: 140px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                      <tr style="background: var(--bg-secondary); position: sticky; top: 0; z-index: 1;">
+                        <th style="padding: 6px; font-size: 10px;">Vertex</th>
+                        <th style="padding: 6px; font-size: 10px;">X (ft)</th>
+                        <th style="padding: 6px; font-size: 10px;">Y (ft)</th>
+                        <th style="padding: 6px; text-align: center; font-size: 10px;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="verticesTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- SBC Rules Textarea Card -->
+              <div class="card" style="margin-bottom: 0;">
+                <h3 class="section-title" style="margin-bottom: 6px;">Seattle Building Code (SBC) Rules</h3>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <textarea id="sbcRulesText" rows="3" style="font-family: monospace; font-size: 11px; color: var(--text-secondary); background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 6px; width: 100%; resize: vertical;">
+// SBC Code Section 23.44.014
+- Lot Coverage Limit: 50%
+- Minimum Side Setback: 5 ft
+- Minimum Front/Rear Setback: 10 ft
+- Minimum Habitable footprint: 100 sq ft
+- Non-overlapping vertex boundaries required
+                  </textarea>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Right side canvas / validation -->
+            <div class="plot-canvas-container">
+              <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 4px;">
+                <h3 class="section-title" style="margin:0;">Plot Boundary Editor</h3>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                  <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-secondary);">
+                    <input type="checkbox" id="toggleGridSnapping" checked> Snap to 1 ft
+                  </label>
+                </div>
+              </div>
+
+              <div style="position: relative; line-height: 0;">
+                <canvas id="plotEditorCanvas" width="460" height="460"></canvas>
+              </div>
+
+              <!-- Metrics -->
+              <div style="display: flex; justify-content: space-around; width: 100%; font-size: 12px; background: var(--bg-secondary); padding: 8px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2px;">
+                <div>Lot: <strong id="valLotArea">0</strong> sq ft</div>
+                <div>Footprint: <strong id="valFootprintArea">0</strong> sq ft</div>
+                <div>Coverage: <strong id="valCoverage">0%</strong></div>
+              </div>
+
+              <!-- Z3 Verification Results -->
+              <div id="z3StatusCard" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); transition: all 0.2s ease;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2px;">
+                  <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600;">Z3 Constraint Solver Baseline</span>
+                  <span class="badge badge-pending" id="z3StatusBadge">PENDING</span>
+                </div>
+                <div id="z3StatusDesc" style="font-size: 11px; line-height: 1.4; color: var(--text-secondary);">
+                  Calculating building geometry under setbacks...
+                </div>
+              </div>
+
+              <!-- Validate and proceed button -->
+              <button class="btn btn-primary" id="validateProceedBtn" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 600; display: inline-flex; justify-content: center;">
+                Validate Plot & Proceed →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PAGE 1: PLANNING -->
+        <div class="page" id="page-planning">
+          <div class="planning-grid">
+            <div class="chat-panel">
+              <div class="chat-messages" id="chatMessages"></div>
+              <div class="chat-input-bar">
+                <textarea id="chatInput" placeholder="Type your response…"></textarea>
+                <button class="btn btn-primary" id="chatSendBtn">Send</button>
+              </div>
+            </div>
+            <div class="brief-panel">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <h2 class="section-title" style="margin:0;">User Brief</h2>
+                <span class="badge badge-draft" id="briefBadge">Draft</span>
+              </div>
+              <div class="brief-cards" id="briefCards"></div>
+              <div class="card" id="budgetTableWrap" style="display:none;">
+                <h4 style="font-size:13px;margin-bottom:10px;color:var(--text-secondary);">Proportioning Budget</h4>
+                <table id="budgetTable"></table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Page Intake removed and merged with Plot Design -->
+
+        <!-- PAGE 3: LAYOUT PITCHER -->
+        <div class="page" id="page-pitcher">
+          <div class="gen-strip" id="genStrip"></div>
+          <div class="option-cards" id="optionCards" style="display:none;"></div>
+          <div class="hitl-bar" id="hitlBar" style="display:none;"></div>
+        </div>
+
+
+        <!-- Page Verification removed -->
+
+        <!-- PAGE 6: OUTPUT -->
+        <div class="page" id="page-output">
+          <div class="output-grid">
+            <div>
+              <h2 style="color:var(--success);font-size:18px;margin-bottom:16px;">Pipeline Complete ✓</h2>
+              <div class="card summary-card" id="runSummary"></div>
+              <div class="card" style="margin-bottom:20px;">
+                <h3 class="section-title">DXF Layers</h3>
+                <ul class="layer-list" id="layerList"></ul>
+              </div>
+              <div class="download-btns">
+                <button class="btn btn-primary" id="downloadDxfBtn">⬇ Download DXF</button>
+                <button class="btn btn-secondary" id="downloadJsonBtn">⬇ Download Report JSON</button>
+              </div>
+            </div>
+            <div class="output-canvas-wrap">
+              <button class="fullscreen-btn" id="fullscreenBtn">⛶ Fullscreen</button>
+              <canvas id="outputCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="confirm-bar" id="confirmBar"></div>
+  <div class="toast-container" id="toastContainer"></div>
+  <div class="fullscreen-overlay" id="fullscreenOverlay">
+    <button class="fullscreen-close" id="fullscreenClose">✕ Close</button>
+    <canvas id="fullscreenCanvas"></canvas>
+  </div>
+
+  <div class="modal-overlay" id="validationModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">⚠️ Validation Error (UNSAT)</span>
+        <button class="modal-close" onclick="closeValidationModal()">✕</button>
+      </div>
+      <div class="modal-body" id="validationModalText">
+        The plot coordinates or setbacks you entered are invalid.
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeValidationModal()">Change Coordinates</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+/* ═══════════════════════════════════════════════════════════
+   MOCK DATA CONSTANTS — swaps easily with backend API calls
+   ═══════════════════════════════════════════════════════════ */
+const MOCK = {
+  userBrief: {
+    lot: { size: '75 × 88 ft', shape: 'L-shaped corner lot', zoning: 'R-2 Residential', corner: true },
+    rooms: [
+      { name: 'Living', type: 'living', minArea: 300 },
+      { name: 'Kitchen', type: 'kitchen', minArea: 150 },
+      { name: 'Master', type: 'bedroom', minArea: 250 },
+      { name: 'Bedroom 2', type: 'bedroom', minArea: 180 },
+      { name: 'Bath 1', type: 'bathroom', minArea: 55 },
+      { name: 'Corridor', type: 'corridor', minArea: 70 }
+    ],
+    priorities: {
+      adjacency: ['Master away from street', 'Kitchen close to garden', 'Bath near bedrooms'],
+      style: 'Open-plan living/kitchen with defined private zones'
+    },
+    budget: [
+      { room: 'Living', min: 300, target: 387, priority: 'medium' },
+      { room: 'Kitchen', min: 150, target: 193, priority: 'high' },
+      { room: 'Master', min: 250, target: 356, priority: 'high' },
+      { room: 'Bedroom 2', min: 180, target: 232, priority: 'medium' },
+      { room: 'Bath 1', min: 55, target: 71, priority: 'low' },
+      { room: 'Corridor', min: 70, target: 90, priority: 'low' }
+    ]
+  },
+
+  groundTruth: {
+    lot_polygon: [[0,8],[35,8],[35,0],[75,0],[75,45],[88,45],[88,88],[0,88]],
+    buildable_box: { x_min: 5, y_min: 20, x_max: 83, y_max: 73 },
+    max_footprint_sqft: 3850,
+    required_rooms: ['living','kitchen','master','bedroom2','bath1','corridor'],
+    constraints: {
+      max_aspect_ratio: 2.5,
+      min_utilization: 0.85,
+      tree_center: [75, 88],
+      tree_radius: 12,
+      setbacks: { front: 20, rear: 15, left: 5, right: 5 }
+    }
+  },
+
+  layoutOptions: [
+    {
+      id: 'A', name: 'Linear',
+      desc: 'Linear Concept — placing social zones in the south and private zones in the north. Good for deep/narrow lots.',
+      zone_hints: { 'Living': 'south', 'Kitchen': 'south', 'Master': 'north', 'Bedroom 2': 'north', 'Bath 1': 'north', 'Corridor': 'center' },
+      utilization: 88, worst_ratio: 1.8, rooms: 6, z3: 'SAT'
+    },
+    {
+      id: 'B', name: 'Private Wing',
+      desc: 'Private Wing Concept — social zones in the west and private wings in the east. Ideal for corner lot noise shielding.',
+      zone_hints: { 'Living': 'west', 'Kitchen': 'west', 'Master': 'east', 'Bedroom 2': 'east', 'Bath 1': 'east', 'Corridor': 'center' },
+      utilization: 86, worst_ratio: 2.1, rooms: 6, z3: 'UNSAT'
+    },
+    {
+      id: 'C', name: 'Mixed Concept',
+      desc: 'Mixed Concept — open social zones south/west, private rooms north/east. Maximizes backyard views.',
+      zone_hints: { 'Living': 'south', 'Kitchen': 'west', 'Master': 'north', 'Bedroom 2': 'north', 'Bath 1': 'north', 'Corridor': 'center' },
+      utilization: 91, worst_ratio: 1.6, rooms: 6, z3: 'SAT'
+    }
+  ],
+
+  packerSteps: [
+    { room: 'Living', x: 5, y: 20, w: 38, h: 22, area: 387, type: 'living', log: '[Packer] Placing LIVING in south zone... anchor (5,20) selected. Fit OK.' },
+    { room: 'Kitchen', x: 43, y: 20, w: 22, h: 18, area: 200, type: 'kitchen', log: '[Packer] Placing KITCHEN in south zone... anchor (43,20) selected. Fit OK.' },
+    { room: 'Master', x: 5, y: 42, w: 28, h: 16, area: 350, type: 'bedroom', log: '[Packer] Placing MASTER in north zone... anchor (5,42) selected. Fit OK.' },
+    { room: 'Bedroom 2', x: 33, y: 42, w: 20, h: 16, area: 228, type: 'bedroom', log: '[Packer] Placing BEDROOM 2 in north zone... anchor (33,42) selected. Fit OK.' },
+    { room: 'Bath 1', x: 51, y: 42, w: 12, h: 10, area: 68, type: 'bathroom', log: '[Packer] Placing BATH 1 in north zone... anchor (51,42) selected. Overlap detected (minor). Z3 checker flags warnings.' },
+    { room: 'Corridor', x: 5, y: 58, w: 60, h: 8, area: 88, type: 'corridor', log: '[Packer] Placing CORRIDOR in center zone... anchor (5,58) selected. Fit OK. Aspect ratio: 7.5 > 2.5.' }
+  ],
+
+  verifyReport: {
+    checks: [
+      'Setback compliance', 'Tree exclusion', 'Lot coverage ≤ 50%',
+      'Room checklist (6/6)', 'No overlap', 'Aspect ratios ≤ 2.5',
+      'Min areas met', 'Door placement valid', 'Window placement valid'
+    ],
+    failing: [4, 5]
+  },
+
+  finalRooms: [
+    { name: 'Living', type: 'living', x: 5, y: 20, w: 38, h: 22, area: 387, dims: "24' × 14'" },
+    { name: 'Kitchen', type: 'kitchen', x: 43, y: 20, w: 22, h: 18, area: 200, dims: "14' × 12'" },
+    { name: 'Master', type: 'bedroom', x: 5, y: 42, w: 28, h: 16, area: 350, dims: "18' × 12'" },
+    { name: 'Bedroom 2', type: 'bedroom', x: 33, y: 42, w: 20, h: 16, area: 228, dims: "14' × 10'" },
+    { name: 'Bath 1', type: 'bathroom', x: 51, y: 42, w: 12, h: 10, area: 68, dims: "8' × 6'" },
+    { name: 'Corridor', type: 'corridor', x: 5, y: 58, w: 60, h: 8, area: 88, dims: "40' × 5'" }
+  ],
+
+  finalRoomsIter2: [
+    { name: 'Living', type: 'living', x: 5, y: 20, w: 38, h: 22, area: 387, dims: "24' × 14'" },
+    { name: 'Kitchen', type: 'kitchen', x: 43, y: 20, w: 22, h: 18, area: 200, dims: "14' × 12'" },
+    { name: 'Master', type: 'bedroom', x: 5, y: 42, w: 28, h: 16, area: 350, dims: "18' × 12'" },
+    { name: 'Bedroom 2', type: 'bedroom', x: 33, y: 42, w: 20, h: 16, area: 228, dims: "14' × 10'" },
+    { name: 'Bath 1', type: 'bathroom', x: 55, y: 44, w: 12, h: 10, area: 68, dims: "8' × 6'" },
+    { name: 'Corridor', type: 'corridor', x: 5, y: 58, w: 62, h: 10, area: 88, dims: "42' × 6'" }
+  ],
+
+  surgeonLog: [
+    '[Verifier] Z3 validation check: UNSAT.',
+    '[Verifier] Found 2 errors:',
+    '  - Overlap: bath1 overlaps bedroom2 from x=51 to x=53.',
+    '  - Aspect Ratio: corridor aspect ratio 7.5 exceeds limit 2.5.',
+    '────────────────────────────────────────────────────────',
+    '[Repair] Pass 1: Relaxing zone hints...',
+    '[Repair] Attempt 1/3: south-north fallback... Z3 check: UNSAT.',
+    '[Repair] Attempt 2/3: neutral fallback (all zones = any)... Z3 check: UNSAT.',
+    '[Repair] Pass 1 failed to converge. Activating Pass 2: Surgeon Agent...',
+    '[Surgeon] Iteration 1/5: Fixing bath1 overlap with bedroom2.',
+    '[Surgeon] Action: Apply bbox shift: bath1 x+4 (new x: 55, y: 44).',
+    '[Surgeon] Re-running Z3... Overlap resolved. ✓',
+    '[Surgeon] Iteration 2/5: Fixing corridor aspect ratio.',
+    '[Surgeon] Action: Resizing corridor w: 60 -> 62, h: 8 -> 10 (new aspect ratio: 2.5).',
+    '[Surgeon] Re-running Z3... Aspect ratio resolved. ✓',
+    '────────────────────────────────────────────────────────',
+    'All checks passed. Layout status: SAT ✓'
+  ],
+
+  dxfLayers: [
+    { name: 'Walls', color: '#06b6d4', aci: 4 },
+    { name: 'Doors', color: '#ef4444', aci: 1 },
+    { name: 'Windows', color: '#3b82f6', aci: 5 },
+    { name: 'Labels', color: '#22c55e', aci: 3 },
+    { name: 'Lot boundary', color: '#ef4444', aci: 1, dashed: true },
+    { name: 'Setback box', color: '#f59e0b', aci: 2 },
+    { name: 'Tree zone', color: '#3b82f6', aci: 5, dashed: true },
+    { name: 'Title block', color: '#f0f0f2', aci: 7 }
+  ],
+
+  conceptLayouts: {
+    A: [
+      { name: 'Living', type: 'living', x: 5, y: 20, w: 25, h: 16, area: 400, dims: "25' × 16'" },
+      { name: 'Kitchen', type: 'kitchen', x: 30, y: 20, w: 16, h: 12, area: 192, dims: "16' × 12'" },
+      { name: 'Master', type: 'bedroom', x: 5, y: 36, w: 18, h: 20, area: 360, dims: "18' × 20'" },
+      { name: 'Bedroom 2', type: 'bedroom', x: 23, y: 36, w: 16, h: 14, area: 224, dims: "16' × 14'" },
+      { name: 'Bath 1', type: 'bathroom', x: 39, y: 36, w: 10, h: 7, area: 70, dims: "10' × 7'" },
+      { name: 'Corridor', type: 'corridor', x: 5, y: 56, w: 44, h: 8, area: 352, dims: "44' × 8'" }
+    ],
+    B: [
+      { name: 'Living', type: 'living', x: 5, y: 20, w: 25, h: 16, area: 400, dims: "25' × 16'" },
+      { name: 'Kitchen', type: 'kitchen', x: 5, y: 36, w: 16, h: 12, area: 192, dims: "16' × 12'" },
+      { name: 'Corridor', type: 'corridor', x: 30, y: 20, w: 8, h: 42, area: 336, dims: "8' × 42'" },
+      { name: 'Master', type: 'bedroom', x: 38, y: 20, w: 18, h: 20, area: 360, dims: "18' × 20'" },
+      { name: 'Bedroom 2', type: 'bedroom', x: 38, y: 40, w: 16, h: 14, area: 224, dims: "16' × 14'" },
+      { name: 'Bath 1', type: 'bathroom', x: 56, y: 20, w: 10, h: 7, area: 70, dims: "10' × 7'" }
+    ],
+    C: [
+      { name: 'Living', type: 'living', x: 5, y: 20, w: 25, h: 16, area: 400, dims: "25' × 16'" },
+      { name: 'Master', type: 'bedroom', x: 30, y: 20, w: 18, h: 20, area: 360, dims: "18' × 20'" },
+      { name: 'Corridor', type: 'corridor', x: 48, y: 20, w: 12, h: 8, area: 96, dims: "12' × 8'" },
+      { name: 'Bath 1', type: 'bathroom', x: 48, y: 28, w: 10, h: 7, area: 70, dims: "10' × 7'" },
+      { name: 'Kitchen', type: 'kitchen', x: 30, y: 40, w: 16, h: 12, area: 192, dims: "16' × 12'" },
+      { name: 'Bedroom 2', type: 'bedroom', x: 5, y: 36, w: 16, h: 14, area: 224, dims: "16' × 14'" }
+    ]
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════
+   APP STATE
+   ═══════════════════════════════════════════════════════════ */
+const PAGES = ['plot-design', 'planning', 'pitcher', 'output'];
+const PAGE_NAMES = { 'plot-design': 'Plot Design', planning: 'Planning', pitcher: 'Pitch & Pack', output: 'Output' };
+
+const state = {
+  currentPage: 'plot-design',
+  unlockedPages: ['plot-design'],
+  pipelineRunning: false,
+  chatTurn: 0,
+  briefConfirmed: false,
+  intakeComplete: false,
+  pitcherComplete: false,
+  packerComplete: false,
+  refinementRound: 1,
+  verificationComplete: false,
+  pitcherGenerated: false,
+  chatAnswers: [],
+  lotWidth: 80,
+  lotHeight: 88,
+  zoning: 'SF-5000',
+  corner: false,
+  style: 'compartmentalised',
+  rooms: [],
+  targetAreas: {}
+};
+
+let resolveConceptSelection = null;
+
+const ROOM_COLORS = {
+  living: { fillVar: '--success', borderVar: '--success' },
+  kitchen: { fillVar: '--success', borderVar: '--success' },
+  bedroom: { fillVar: '--teal', borderVar: '--teal' },
+  bathroom: { fillVar: '--amber', borderVar: '--amber' },
+  corridor: { fillVar: '--accent', borderVar: '--accent' },
+  garage: { fillVar: '--teal', borderVar: '--teal' },
+  study: { fillVar: '--teal', borderVar: '--teal' },
+  office: { fillVar: '--teal', borderVar: '--teal' },
+  gym: { fillVar: '--teal', borderVar: '--teal' }
+};
+
+function getCssColor(varName, alpha) {
+  const val = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  if (alpha !== undefined && alpha !== 1) {
+    if (val.startsWith('#')) {
+      const hex = val.slice(1);
+      let r, g, b;
+      if (hex.length === 3) {
+        r = parseInt(hex[0] + hex[0], 16);
+        g = parseInt(hex[1] + hex[1], 16);
+        b = parseInt(hex[2] + hex[2], 16);
+      } else if (hex.length === 6) {
+        r = parseInt(hex.slice(0, 2), 16);
+        g = parseInt(hex.slice(2, 4), 16);
+        b = parseInt(hex.slice(4, 6), 16);
+      }
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+  }
+  return val;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GEOMETRICAL COMPASS AND SOLVER BASELINE HELPERS
+   ═══════════════════════════════════════════════════════════ */
+
+function getPolygonArea(pts) {
+  let area = 0;
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    area += p1[0] * p2[1] - p2[0] * p1[1];
+  }
+  return Math.abs(area * 0.5);
+}
+
+function getPolygonAreaSign(pts) {
+  let area = 0;
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    area += p1[0] * p2[1] - p2[0] * p1[1];
+  }
+  return area * 0.5;
+}
+
+function lineSegmentsIntersect(p1, p2, p3, p4) {
+  function ccw(A, B, C) {
+    return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0]);
+  }
+  return ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
+}
+
+function isSelfIntersecting(pts) {
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const a1 = pts[i];
+    const a2 = pts[(i + 1) % n];
+    for (let j = i + 2; j < n; j++) {
+      if ((j + 1) % n === i) continue; // adjacent edges
+      const b1 = pts[j];
+      const b2 = pts[(j + 1) % n];
+      if (lineSegmentsIntersect(a1, a2, b1, b2)) return true;
+    }
+  }
+  return false;
+}
+
+function computeSetbackPolygon(vertices, setback_h, setback_v) {
+  const n = vertices.length;
+  if (n < 3) return [];
+
+  // Ensure CCW orientation
+  let poly = vertices.map(v => [v[0], v[1]]);
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const p1 = poly[i];
+    const p2 = poly[(i + 1) % n];
+    area += p1[0] * p2[1] - p2[0] * p1[1];
+  }
+  if (area < 0) {
+    poly.reverse();
+  }
+
+  const lines = [];
+
+  // Compute offset lines for each edge
+  for (let i = 0; i < n; i++) {
+    const p1 = poly[i];
+    const p2 = poly[(i + 1) % n];
+
+    const dx = p2[0] - p1[0];
+    const dy = p2[1] - p1[1];
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-6) continue;
+
+    const ux = dx / len;
+    const uy = dy / len;
+
+    // Inward normal (left of CCW vector)
+    const nx = -uy;
+    const ny = ux;
+
+    // Classify edge: if dy is small it's horizontal-ish (use vertical setback)
+    const isHorizontal = Math.abs(dx) > Math.abs(dy);
+    const d = isHorizontal ? setback_v : setback_h;
+
+    const op1_x = p1[0] + d * nx;
+    const op1_y = p1[1] + d * ny;
+
+    lines.push({
+      p1: [op1_x, op1_y],
+      dir: [ux, uy]
+    });
+  }
+
+  const offsetVertices = [];
+  const m = lines.length;
+  for (let i = 0; i < m; i++) {
+    const l1 = lines[(i - 1 + m) % m];
+    const l2 = lines[i];
+
+    const x1 = l1.p1[0], y1 = l1.p1[1];
+    const dx1 = l1.dir[0], dy1 = l1.dir[1];
+    const x2 = l2.p1[0], y2 = l2.p1[1];
+    const dx2 = l2.dir[0], dy2 = l2.dir[1];
+
+    const det = dx2 * dy1 - dx1 * dy2;
+    if (Math.abs(det) < 1e-6) {
+      // Parallel
+      offsetVertices.push([x2, y2]);
+    } else {
+      const t1 = ((y2 - y1) * dx2 - (x2 - x1) * dy2) / det;
+      const ix = x1 + t1 * dx1;
+      const iy = y1 + t1 * dy1;
+      offsetVertices.push([ix, iy]);
+    }
+  }
+
+  return offsetVertices;
+}
+
+function isPointInPolygon(point, vs) {
+  const x = point[0], y = point[1];
+  let inside = false;
+  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+    const xi = vs[i][0], yi = vs[i][1];
+    const xj = vs[j][0], yj = vs[j][1];
+    const intersect = ((yi > y) !== (yj > y))
+        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function getBuildableArea(vertices, setback_h, setback_v, tx, ty, tr) {
+  const shrunk = computeSetbackPolygon(vertices, setback_h, setback_v);
+  if (!shrunk || shrunk.length < 3) return 0;
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  shrunk.forEach(p => {
+    if (p[0] < minX) minX = p[0];
+    if (p[0] > maxX) maxX = p[0];
+    if (p[1] < minY) minY = p[1];
+    if (p[1] > maxY) maxY = p[1];
+  });
+
+  const w = maxX - minX;
+  const h = maxY - minY;
+  if (w <= 0 || h <= 0) return 0;
+
+  const steps = 100;
+  const dx = w / steps;
+  const dy = h / steps;
+  let count = 0;
+
+  for (let i = 0; i < steps; i++) {
+    const x = minX + (i + 0.5) * dx;
+    for (let j = 0; j < steps; j++) {
+      const y = minY + (j + 0.5) * dy;
+      if (isPointInPolygon([x, y], shrunk)) {
+        const distSq = (x - tx) ** 2 + (y - ty) ** 2;
+        if (distSq >= tr * tr) {
+          count++;
+        }
+      }
+    }
+  }
+
+  const area = (count / (steps * steps)) * (w * h);
+  return Math.round(area);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PLOT EDITOR INTERACTIVE CANVAS CLASS
+   ═══════════════════════════════════════════════════════════ */
+class PlotEditor {
+  constructor(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    this.ctx = this.canvas.getContext('2d');
+    this.canvas.width = 460;
+    this.canvas.height = 460;
+
+    this.margin = 40;
+    this.scale = (this.canvas.width - 2 * this.margin) / 100;
+
+    this.vertices = [];
+    this.setback_h = 5;
+    this.setback_v = 15;
+
+    this.draggedIndex = -1;
+    this.hoveredIndex = -1;
+    this.hoveredEdge = -1;
+    this.hoveredEdgePoint = null;
+
+    this.snapToGrid = true;
+    this.onChangeCallback = null;
+
+    this.initEvents();
+  }
+
+  initEvents() {
+    this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
+    this.canvas.addEventListener('mousemove', e => this.onMouseMove(e));
+    this.canvas.addEventListener('mouseup', e => this.onMouseUp(e));
+    this.canvas.addEventListener('dblclick', e => this.onDoubleClick(e));
+    this.canvas.addEventListener('mouseleave', e => this.onMouseLeave(e));
+  }
+
+  tx(wx) { return this.margin + wx * this.scale; }
+  ty(wy) { return this.canvas.height - this.margin - wy * this.scale; }
+  invTx(cx) { return (cx - this.margin) / this.scale; }
+  invTy(cy) { return (this.canvas.height - this.margin - cy) / this.scale; }
+
+  onMouseDown(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+    const cy = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+    const wx = this.invTx(cx);
+    const wy = this.invTy(cy);
+
+    const idx = this.getClosestVertexIndex(wx, wy, 15 / this.scale);
+    if (idx !== -1) {
+      this.draggedIndex = idx;
+    }
+  }
+
+  onMouseMove(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+    const cy = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+    const wx = this.invTx(cx);
+    const wy = this.invTy(cy);
+
+    if (this.draggedIndex !== -1) {
+      let nx = Math.max(0, Math.min(100, wx));
+      let ny = Math.max(0, Math.min(100, wy));
+
+      if (this.snapToGrid) {
+        nx = Math.round(nx);
+        ny = Math.round(ny);
+      } else {
+        nx = Math.round(nx * 10) / 10;
+        ny = Math.round(ny * 10) / 10;
+      }
+
+      this.vertices[this.draggedIndex] = [nx, ny];
+      if (this.onChangeCallback) this.onChangeCallback();
+      this.draw();
+    } else {
+      const prevHovered = this.hoveredIndex;
+      this.hoveredIndex = this.getClosestVertexIndex(wx, wy, 15 / this.scale);
+
+      const prevHoveredEdge = this.hoveredEdge;
+      this.hoveredEdge = -1;
+      this.hoveredEdgePoint = null;
+
+      if (this.hoveredIndex === -1) {
+        const edgeInfo = this.getClosestEdge(wx, wy, 15 / this.scale);
+        if (edgeInfo) {
+          this.hoveredEdge = edgeInfo.index;
+          this.hoveredEdgePoint = edgeInfo.point;
+        }
+      }
+
+      if (this.hoveredIndex !== prevHovered || this.hoveredEdge !== prevHoveredEdge) {
+        this.draw();
+      }
+    }
+  }
+
+  onMouseUp(e) {
+    this.draggedIndex = -1;
+  }
+
+  onMouseLeave() {
+    this.draggedIndex = -1;
+    this.hoveredIndex = -1;
+    this.hoveredEdge = -1;
+    this.hoveredEdgePoint = null;
+    this.draw();
+  }
+
+  onDoubleClick(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+    const cy = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+    const wx = this.invTx(cx);
+    const wy = this.invTy(cy);
+
+    const edgeInfo = this.getClosestEdge(wx, wy, 15 / this.scale);
+    if (edgeInfo) {
+      let insertPoint = [edgeInfo.point[0], edgeInfo.point[1]];
+      if (this.snapToGrid) {
+        insertPoint[0] = Math.round(insertPoint[0]);
+        insertPoint[1] = Math.round(insertPoint[1]);
+      }
+      this.vertices.splice(edgeInfo.index + 1, 0, insertPoint);
+      this.hoveredIndex = edgeInfo.index + 1;
+      this.hoveredEdge = -1;
+      this.hoveredEdgePoint = null;
+      if (this.onChangeCallback) this.onChangeCallback();
+      this.draw();
+    }
+  }
+
+  getClosestVertexIndex(wx, wy, threshold) {
+    let minDist = Infinity;
+    let minIdx = -1;
+    for (let i = 0; i < this.vertices.length; i++) {
+      const v = this.vertices[i];
+      const dist = Math.sqrt((v[0] - wx) ** 2 + (v[1] - wy) ** 2);
+      if (dist < minDist && dist < threshold) {
+        minDist = dist;
+        minIdx = i;
+      }
+    }
+    return minIdx;
+  }
+
+  getClosestEdge(wx, wy, threshold) {
+    let minDist = Infinity;
+    let minIdx = -1;
+    let bestPoint = null;
+    const n = this.vertices.length;
+    if (n < 3) return null;
+
+    for (let i = 0; i < n; i++) {
+      const p1 = this.vertices[i];
+      const p2 = this.vertices[(i + 1) % n];
+
+      const dx = p2[0] - p1[0];
+      const dy = p2[1] - p1[1];
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq < 1e-6) continue;
+
+      const wx_p1 = wx - p1[0];
+      const wy_p1 = wy - p1[1];
+      let t = (wx_p1 * dx + wy_p1 * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+
+      const projX = p1[0] + t * dx;
+      const projY = p1[1] + t * dy;
+
+      const dist = Math.sqrt((wx - projX) ** 2 + (wy - projY) ** 2);
+      if (dist < minDist && dist < threshold) {
+        minDist = dist;
+        minIdx = i;
+        bestPoint = [projX, projY];
+      }
+    }
+
+    if (minIdx !== -1) {
+      return { index: minIdx, point: bestPoint };
+    }
+    return null;
+  }
+
+  getShrunkPolygon() {
+    return computeSetbackPolygon(this.vertices, this.setback_h, this.setback_v);
+  }
+
+  getArea(pts) {
+    return getPolygonArea(pts);
+  }
+
+  isValid() {
+    const shrunk = this.getShrunkPolygon();
+    if (!shrunk || shrunk.length < 3) return false;
+    if (isSelfIntersecting(this.vertices)) return false;
+    if (isSelfIntersecting(shrunk)) return false;
+
+    // Check CCW area is positive
+    const sign = getPolygonAreaSign(shrunk);
+    if (sign <= 0) return false;
+
+    const footprintArea = Math.abs(sign);
+    if (footprintArea < 100) return false;
+
+    return true;
+  }
+
+  draw() {
+    const ctx = this.ctx;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // Draw grid
+    ctx.strokeStyle = '#1d1d22';
+    ctx.lineWidth = 0.5;
+    for (let i = 2; i < 100; i += 2) {
+      if (i % 10 === 0) continue;
+      ctx.beginPath();
+      ctx.moveTo(this.tx(i), this.ty(0));
+      ctx.lineTo(this.tx(i), this.ty(100));
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(this.tx(0), this.ty(i));
+      ctx.lineTo(this.tx(100), this.ty(i));
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = '#2d2d35';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 100; i += 10) {
+      ctx.beginPath();
+      ctx.moveTo(this.tx(i), this.ty(0));
+      ctx.lineTo(this.tx(i), this.ty(100));
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(this.tx(0), this.ty(i));
+      ctx.lineTo(this.tx(100), this.ty(i));
+      ctx.stroke();
+
+      ctx.fillStyle = '#5a5a63';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(i + "'", this.tx(i), h - this.margin + 12);
+      ctx.textAlign = 'right';
+      ctx.fillText(i + "'", this.margin - 6, this.ty(i) + 3);
+    }
+
+    const n = this.vertices.length;
+    if (n < 3) return;
+
+    // Draw setbacks / buildable area
+    const shrunk = this.getShrunkPolygon();
+    const valid = this.isValid();
+
+    const tXEl = document.getElementById('treeX');
+    const tYEl = document.getElementById('treeY');
+    const tREl = document.getElementById('treeRadius');
+    const tx_val = tXEl ? (parseFloat(tXEl.value) || 0) : 0;
+    const ty_val = tYEl ? (parseFloat(tYEl.value) || 0) : 0;
+    const tr_val = tREl ? (parseFloat(tREl.value) || 0) : 0;
+
+    if (shrunk && shrunk.length >= 3) {
+      // 1. Fill the buildable polygon
+      ctx.save();
+      ctx.beginPath();
+      shrunk.forEach((p, i) => {
+        i === 0 ? ctx.moveTo(this.tx(p[0]), this.ty(p[1])) : ctx.lineTo(this.tx(p[0]), this.ty(p[1]));
+      });
+      ctx.closePath();
+      ctx.fillStyle = valid ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.05)';
+      ctx.fill();
+
+      // 2. Subtract tree zone from the fill
+      if (tr_val > 0) {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(this.tx(tx_val), this.ty(ty_val), tr_val * this.scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // 3. Draw dashed boundary stroke outside the tree circle
+      ctx.save();
+      if (tr_val > 0) {
+        ctx.beginPath();
+        ctx.rect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.arc(this.tx(tx_val), this.ty(ty_val), tr_val * this.scale, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip('evenodd');
+      }
+
+      ctx.strokeStyle = valid ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+
+      // Draw lot setback outline
+      ctx.beginPath();
+      shrunk.forEach((p, i) => {
+        i === 0 ? ctx.moveTo(this.tx(p[0]), this.ty(p[1])) : ctx.lineTo(this.tx(p[0]), this.ty(p[1]));
+      });
+      ctx.closePath();
+      ctx.stroke();
+
+      // Draw tree exclusion arc boundary (only where it cuts into the lot)
+      if (tr_val > 0) {
+        ctx.beginPath();
+        ctx.arc(this.tx(tx_val), this.ty(ty_val), tr_val * this.scale, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Draw lot boundary
+    ctx.beginPath();
+    this.vertices.forEach((p, i) => {
+      i === 0 ? ctx.moveTo(this.tx(p[0]), this.ty(p[1])) : ctx.lineTo(this.tx(p[0]), this.ty(p[1]));
+    });
+    ctx.closePath();
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Draw tree protection zone
+    if (tXEl && tYEl && tREl) {
+      ctx.beginPath();
+      ctx.arc(this.tx(tx_val), this.ty(ty_val), tr_val * this.scale, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      ctx.fillStyle = '#3b82f6';
+      ctx.font = '9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Tree zone', this.tx(tx_val), this.ty(ty_val) + 3);
+    }
+
+    // Draw handles
+    this.vertices.forEach((p, i) => {
+      const isHovered = (i === this.hoveredIndex || i === this.draggedIndex);
+      ctx.beginPath();
+      ctx.arc(this.tx(p[0]), this.ty(p[1]), isHovered ? 7 : 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.strokeStyle = isHovered ? '#7c6af7' : '#ef4444';
+      ctx.lineWidth = isHovered ? 3 : 2;
+      ctx.stroke();
+
+      if (isHovered) {
+        ctx.fillStyle = '#f0f0f2';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`V${i}: (${p[0]}, ${p[1]})`, this.tx(p[0]), this.ty(p[1]) - 12);
+      }
+    });
+
+    // Draw edge preview
+    if (this.hoveredEdge !== -1 && this.hoveredEdgePoint) {
+      const p = this.hoveredEdgePoint;
+      ctx.beginPath();
+      ctx.arc(this.tx(p[0]), this.ty(p[1]), 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(124, 106, 247, 0.8)';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#7c6af7';
+      ctx.font = '9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText("Double-click to split edge", this.tx(p[0]), this.ty(p[1]) - 10);
+    }
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════ */
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function showToast(msg, type = 'info') {
+  const container = $('#toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, 2700);
+}
+
+function setPipelineDot(phase, status) {
+  const dot = document.querySelector(`.pipeline-dot[data-phase="${phase}"]`);
+  if (!dot) return;
+  dot.className = 'pipeline-dot';
+  if (status) dot.classList.add(status);
+}
+
+function unlockPage(page) {
+  if (!state.unlockedPages.includes(page)) state.unlockedPages.push(page);
+  const item = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (item) item.classList.remove('locked');
+}
+
+function setStatusChip(text, cls) {
+  const chip = $('#statusChip');
+  chip.className = 'status-chip' + (cls ? ' ' + cls : '');
+  $('#statusText').textContent = text;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════════════ */
+async function navigateTo(page) {
+  if (!state.unlockedPages.includes(page) && page !== state.currentPage) {
+    showToast('Complete the previous step first.', 'warning');
+    return;
+  }
+  const content = $('#mainContent');
+  content.classList.add('fade-out');
+  await delay(200);
+  $$('.page').forEach(p => p.classList.remove('active'));
+  $(`#page-${page}`).classList.add('active');
+  $$('.nav-item').forEach(n => n.classList.remove('active'));
+  const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (navItem) navItem.classList.add('active');
+  state.currentPage = page;
+  $('#breadcrumbPage').textContent = PAGE_NAMES[page];
+  if (location.hash !== '#' + page) location.hash = page;
+  content.classList.remove('fade-out');
+  onPageEnter(page);
+}
+
+function onPageEnter(page) {
+  if (page === 'plot-design' && window.plotEditor) window.plotEditor.draw();
+  if (page === 'pitcher' && !state.pitcherGenerated) generateConcepts();
+  if (page === 'output') initOutputPage();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAGE 0 — PLANNING
+   ═══════════════════════════════════════════════════════════ */
+const AGENT_MESSAGES = [
+  "Hello! I'm your architectural planning assistant (A0). Let's define your project. First — what is the approximate lot size and shape, and what city or zoning district is this for?",
+  "Got it. Now let's talk about the programme. How many bedrooms do you need? Do you want a master suite with an attached bathroom? And do you prefer open-plan (kitchen + living merged) or separate rooms?",
+  "Almost there. Which rooms are the highest priority for space? And are there any adjacency requirements — for example, should the master bedroom be away from street noise, or the kitchen close to the garden?",
+  "Perfect. I've compiled your brief. Review it on the right and confirm when ready."
+];
+
+function initPlanning() {
+  const msgs = $('#chatMessages');
+  msgs.innerHTML = '';
+  addAgentMessage(AGENT_MESSAGES[0]);
+  state.chatTurn = 0;
+  setPipelineDot(1, 'running');
+}
+
+function addAgentMessage(text) {
+  const div = document.createElement('div');
+  div.className = 'msg msg-agent';
+  div.textContent = text;
+  $('#chatMessages').appendChild(div);
+  $('#chatMessages').scrollTop = $('#chatMessages').scrollHeight;
+}
+
+function addUserMessage(text) {
+  const div = document.createElement('div');
+  div.className = 'msg msg-user';
+  div.textContent = text;
+  $('#chatMessages').appendChild(div);
+  $('#chatMessages').scrollTop = $('#chatMessages').scrollHeight;
+}
+
+function updateBriefPanel(turn) {
+  const cards = $('#briefCards');
+  if (turn === 1) {
+    const t1 = state.chatAnswers[1] || "";
+    let width = 80;
+    let height = 88;
+    const dimRegex = /(\d+)\s*[xX×]\s*(\d+)/;
+    const match = t1.match(dimRegex);
+    if (match) {
+      width = parseInt(match[1]);
+      height = parseInt(match[2]);
+    } else {
+      const nums = t1.match(/\b\d{2,3}\b/g);
+      if (nums && nums.length >= 2) {
+        width = parseInt(nums[0]);
+        height = parseInt(nums[1]);
+      }
+    }
+    width = Math.max(50, Math.min(150, width));
+    height = Math.max(50, Math.min(150, height));
+    state.lotWidth = width;
+    state.lotHeight = height;
+
+    let zoning = "SF-5000";
+    if (t1.toUpperCase().includes("R-2")) zoning = "R-2 Residential";
+    else if (t1.toUpperCase().includes("R-1")) zoning = "R-1 Residential";
+    else if (t1.toUpperCase().includes("SF-5000")) zoning = "SF-5000";
+    else {
+      const zoneMatch = t1.match(/\b[a-zA-Z]+-\d+\b/);
+      if (zoneMatch) zoning = zoneMatch[0];
+    }
+    state.zoning = zoning;
+
+    const corner = t1.toLowerCase().includes("corner") || t1.toLowerCase().includes("yes") || t1.toLowerCase().includes("y");
+    state.corner = corner;
+
+    MOCK.userBrief.lot = {
+      size: `${width} × ${height} ft`,
+      shape: `${corner ? 'L-shaped corner lot' : 'Rectangular regular lot'}`,
+      zoning: zoning,
+      corner: corner
+    };
+
+    const lot = MOCK.userBrief.lot;
+    cards.innerHTML = `<div class="card card-accent-left brief-card" id="brief-lot">
+      <h4>Lot</h4>
+      <p><strong>Size:</strong> ${lot.size}<br>
+      <strong>Shape:</strong> ${lot.shape}<br>
+      <strong>Zoning:</strong> ${lot.zoning}<br>
+      <strong>Corner lot:</strong> ${lot.corner ? 'Yes' : 'No'}</p></div>`;
+  }
+  if (turn === 2) {
+    const t2 = state.chatAnswers[2] || "";
+    let beds = 3;
+    const bedMatch = t2.match(/\b([1-4])\b/);
+    if (bedMatch) {
+      beds = parseInt(bedMatch[1]);
+    } else {
+      if (t2.toLowerCase().includes("one")) beds = 1;
+      else if (t2.toLowerCase().includes("two")) beds = 2;
+      else if (t2.toLowerCase().includes("three")) beds = 3;
+      else if (t2.toLowerCase().includes("four")) beds = 4;
+    }
+    state.bedrooms = beds;
+
+    const master = !t2.toLowerCase().includes("no master") && !t2.toLowerCase().includes("without master");
+    state.master = master;
+
+    let style = "compartmentalised";
+    if (t2.toLowerCase().includes("open")) style = "open-plan";
+    else if (t2.toLowerCase().includes("linear")) style = "linear";
+    state.style = style;
+
+    const specialRooms = [];
+    if (t2.toLowerCase().includes("garage")) specialRooms.push("Garage");
+    if (t2.toLowerCase().includes("study")) specialRooms.push("Study");
+    if (t2.toLowerCase().includes("office")) specialRooms.push("Office");
+    if (t2.toLowerCase().includes("gym")) specialRooms.push("Gym");
+    state.specialRooms = specialRooms;
+
+    const rooms = [];
+    rooms.push({ name: 'Living', type: 'living', minArea: 300, priority: 'high' });
+    rooms.push({ name: 'Kitchen', type: 'kitchen', minArea: 150, priority: 'medium' });
+    if (master) {
+      rooms.push({ name: 'Master', type: 'bedroom', minArea: 250, priority: 'high', attached_bath: true });
+    } else {
+      rooms.push({ name: 'Bedroom 1', type: 'bedroom', minArea: 180, priority: 'high', attached_bath: false });
+    }
+    for (let i = 2; i <= beds; i++) {
+      rooms.push({ name: `Bedroom ${i}`, type: 'bedroom', minArea: 180, priority: 'medium', attached_bath: false });
+    }
+    const numBaths = beds >= 3 ? 2 : 1;
+    for (let i = 1; i <= numBaths; i++) {
+      rooms.push({ name: `Bath ${i}`, type: 'bathroom', minArea: 55, priority: 'low', attached_bath: false });
+    }
+    specialRooms.forEach(name => {
+      const minArea = name === 'Garage' ? 200 : 120;
+      rooms.push({ name: name, type: name.toLowerCase(), minArea: minArea, priority: 'medium' });
+    });
+    rooms.push({ name: 'Corridor', type: 'corridor', minArea: 70, priority: 'low' });
+    state.rooms = rooms;
+
+    MOCK.userBrief.rooms = rooms;
+
+    const roomBadges = rooms.map(r =>
+      `<span class="room-badge">${r.name} · ${r.minArea} sq ft</span>`
+    ).join('');
+    cards.innerHTML += `<div class="card card-accent-left brief-card" id="brief-rooms">
+      <h4>Rooms</h4><div>${roomBadges}</div></div>`;
+  }
+  if (turn === 3) {
+    const t3 = state.chatAnswers[3] || "";
+    const adjacencies = [];
+    if (t3.toLowerCase().includes("living") && t3.toLowerCase().includes("kitchen")) {
+      adjacencies.push("Kitchen close to Living");
+    } else {
+      adjacencies.push("Kitchen close to garden");
+    }
+    if (t3.toLowerCase().includes("noise") || t3.toLowerCase().includes("street") || t3.toLowerCase().includes("away")) {
+      adjacencies.push("Master away from street");
+    } else {
+      adjacencies.push("Master close to garden");
+    }
+    adjacencies.push("Bath near bedrooms");
+
+    MOCK.userBrief.priorities = {
+      adjacency: adjacencies,
+      style: `${state.style.charAt(0).toUpperCase() + state.style.slice(1)} layout with parsed adjacencies.`
+    };
+
+    const buildableWidth = state.lotWidth - 10;
+    const buildableHeight = state.lotHeight - 35;
+    const buildableArea = buildableWidth * buildableHeight;
+    const targetAreas = computeProportioningBudget(state.rooms, buildableArea);
+    state.targetAreas = targetAreas;
+
+    const budget = state.rooms.map(r => ({
+      room: r.name,
+      min: r.minArea,
+      target: targetAreas[r.name],
+      priority: r.priority
+    }));
+    MOCK.userBrief.budget = budget;
+
+    const p = MOCK.userBrief.priorities;
+    cards.innerHTML += `<div class="card card-accent-left brief-card" id="brief-priorities">
+      <h4>Priorities</h4>
+      <ul>${p.adjacency.map(a => `<li>${a}</li>`).join('')}</ul>
+      <p style="margin-top:8px;color:var(--text-secondary);">${p.style}</p></div>`;
+
+    renderBudgetTable();
+    
+    // DOM inputs synced via Plot Design page
+    updateSubsequentMockData(state.lotWidth, state.lotHeight, state.corner, state.rooms, targetAreas);
+  }
+}
+
+function renderBudgetTable() {
+  const wrap = $('#budgetTableWrap');
+  wrap.style.display = 'block';
+  const table = $('#budgetTable');
+  table.innerHTML = `<thead><tr><th>Room</th><th>Min Area</th><th>Target Area</th><th>Priority</th></tr></thead><tbody>
+    ${MOCK.userBrief.budget.map(r => {
+      const star = r.priority === 'high' ? ' ★' : '';
+      const cls = r.priority === 'high' ? ' class="highlight"' : '';
+      return `<tr${cls}><td>${r.room}</td><td>${r.min}</td><td>${r.target}</td><td>${r.priority}${star}</td></tr>`;
+    }).join('')}
+  </tbody>`;
+}
+
+async function sendChatMessage() {
+  const input = $('#chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  addUserMessage(text);
+  input.value = '';
+  
+  state.chatAnswers[state.chatTurn + 1] = text;
+  state.chatTurn++;
+  updateBriefPanel(state.chatTurn);
+
+  input.disabled = true;
+  $('#chatSendBtn').disabled = true;
+
+  await delay(1200);
+  if (state.chatTurn <= 3) {
+    addAgentMessage(AGENT_MESSAGES[state.chatTurn]);
+  }
+
+  if (state.chatTurn < 3) {
+    input.disabled = false;
+    $('#chatSendBtn').disabled = false;
+    input.focus();
+  } else if (state.chatTurn === 3) {
+    showConfirmBriefButton();
+  }
+}
+
+function showConfirmBriefButton() {
+  if (document.getElementById('confirmBriefBtn')) return;
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-success';
+  btn.id = 'confirmBriefBtn';
+  btn.textContent = 'Confirm Brief';
+  btn.style.margin = '8px 0 0';
+  btn.onclick = confirmBrief;
+  const wrap = document.createElement('div');
+  wrap.style.padding = '0 16px 12px';
+  wrap.appendChild(btn);
+  $('#chatMessages').appendChild(wrap);
+}
+
+async function confirmBrief() {
+  state.briefConfirmed = true;
+  const badge = $('#briefBadge');
+  badge.className = 'badge badge-confirmed';
+  badge.textContent = 'Confirmed ✓';
+  setPipelineDot(1, 'done');
+
+  // Run intake calculations under the hood
+  await runIntakeAgent();
+
+  unlockPage('pitcher');
+
+  $('#chatInput').disabled = true;
+  $('#chatSendBtn').disabled = true;
+  const confirmBtn = document.getElementById('confirmBriefBtn');
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Brief Confirmed ✓';
+  }
+
+  showToast('Brief confirmed. Proceeding to Pitch & Pack.', 'success');
+  await delay(800);
+  navigateTo('pitcher');
+}
+
+function computeProportioningBudget(rooms, buildableArea) {
+  let sumMinAreas = 0;
+  rooms.forEach(r => sumMinAreas += r.minArea);
+  
+  const targetTotal = buildableArea * 0.87;
+  const scaleFactor = targetTotal / sumMinAreas;
+  
+  const targetAreas = {};
+  rooms.forEach(r => {
+    targetAreas[r.name] = r.minArea * scaleFactor;
+  });
+  
+  let highSurplus = 0;
+  rooms.forEach(r => {
+    if (r.priority === 'high') {
+      const addedVal = targetAreas[r.name] * 0.15;
+      targetAreas[r.name] += addedVal;
+      highSurplus += addedVal;
+    }
+  });
+  
+  const lowRooms = rooms.filter(r => r.priority === 'low');
+  if (lowRooms.length > 0 && highSurplus > 0) {
+    const availableReduction = lowRooms.reduce((acc, r) => acc + (targetAreas[r.name] - r.minArea), 0);
+    if (availableReduction >= highSurplus) {
+      lowRooms.forEach(r => {
+        const roomAvail = targetAreas[r.name] - r.minArea;
+        const reduction = highSurplus * (roomAvail / availableReduction);
+        targetAreas[r.name] -= reduction;
+      });
+      highSurplus = 0;
+    } else {
+      lowRooms.forEach(r => {
+        targetAreas[r.name] = r.minArea;
+      });
+      highSurplus -= availableReduction;
+    }
+  }
+  
+  const medRooms = rooms.filter(r => r.priority === 'medium');
+  if (medRooms.length > 0 && highSurplus > 0) {
+    const availableReduction = medRooms.reduce((acc, r) => acc + (targetAreas[r.name] - r.minArea), 0);
+    if (availableReduction >= highSurplus) {
+      medRooms.forEach(r => {
+        const roomAvail = targetAreas[r.name] - r.minArea;
+        const reduction = highSurplus * (roomAvail / availableReduction);
+        targetAreas[r.name] -= reduction;
+      });
+      highSurplus = 0;
+    } else {
+      medRooms.forEach(r => {
+        targetAreas[r.name] = r.minArea;
+      });
+      highSurplus -= availableReduction;
+    }
+  }
+  
+  const otherRooms = rooms.filter(r => r.priority !== 'high');
+  if (otherRooms.length > 0 && highSurplus > 0) {
+    const availableReduction = otherRooms.reduce((acc, r) => acc + (targetAreas[r.name] - r.minArea), 0);
+    if (availableReduction >= highSurplus) {
+      otherRooms.forEach(r => {
+        const roomAvail = targetAreas[r.name] - r.minArea;
+        const reduction = highSurplus * (roomAvail / availableReduction);
+        targetAreas[r.name] -= reduction;
+      });
+      highSurplus = 0;
+    } else {
+      otherRooms.forEach(r => {
+        targetAreas[r.name] = r.minArea;
+      });
+    }
+  }
+  
+  const livingName = rooms.find(r => r.type === 'living')?.name;
+  if (livingName) {
+    for (let loop = 0; loop < 50; loop++) {
+      const violatedBeds = {};
+      rooms.forEach(r => {
+        if (r.type === 'bedroom' && r.name !== livingName) {
+          if (targetAreas[r.name] < 0.55 * targetAreas[livingName]) {
+            violatedBeds[r.name] = 0.55 * targetAreas[livingName] - targetAreas[r.name];
+          }
+        }
+      });
+      
+      if (Object.keys(violatedBeds).length === 0) break;
+      
+      const totalNeeded = Object.values(violatedBeds).reduce((a, b) => a + b, 0);
+      
+      const deductibleRooms = {};
+      rooms.forEach(r => {
+        if (r.name !== livingName && !violatedBeds[r.name] && r.type !== 'bedroom') {
+          const avail = targetAreas[r.name] - r.minArea;
+          if (avail > 0) deductibleRooms[r.name] = avail;
+        }
+      });
+      
+      const totalDeductible = Object.values(deductibleRooms).reduce((a, b) => a + b, 0);
+      if (totalDeductible >= totalNeeded) {
+        for (const name in violatedBeds) {
+          targetAreas[name] += violatedBeds[name];
+        }
+        for (const name in deductibleRooms) {
+          targetAreas[name] -= totalNeeded * (deductibleRooms[name] / totalDeductible);
+        }
+      } else {
+        if (targetAreas[livingName] - 5 >= 300) {
+          targetAreas[livingName] -= 5;
+          for (const name in violatedBeds) {
+            targetAreas[name] += 5 * (violatedBeds[name] / totalNeeded);
+          }
+        } else {
+          for (const name in violatedBeds) {
+            targetAreas[name] += totalDeductible * (violatedBeds[name] / totalNeeded);
+          }
+          for (const name in deductibleRooms) {
+            targetAreas[name] = rooms.find(r => r.name === name).minArea;
+          }
+          break;
+        }
+      }
+    }
+  }
+  
+  for (const k in targetAreas) {
+    targetAreas[k] = Math.round(targetAreas[k]);
+  }
+  
+  return targetAreas;
+}
+
+function generateLotPolygon(width, height, corner) {
+  if (!corner) {
+    return [[0, 0], [width, 0], [width, height], [0, height]];
+  } else {
+    const base = [[0,8],[35,8],[35,0],[75,0],[75,45],[88,45],[88,88],[0,88]];
+    const scaleX = width / 88.0;
+    const scaleY = height / 88.0;
+    return base.map(p => [Math.round(p[0] * scaleX), Math.round(p[1] * scaleY)]);
+  }
+}
+
+function generateDynamicLayoutAndSteps(rooms, targetAreas, width, height) {
+  const roomDims = {};
+  rooms.forEach(r => {
+    const T = targetAreas[r.name];
+    let rw, rh;
+    if (r.type === 'living') {
+      rw = Math.round(Math.sqrt(T * 1.4));
+      rh = Math.round(T / rw);
+    } else if (r.type === 'kitchen') {
+      rw = Math.round(Math.sqrt(T * 1.2));
+      rh = Math.round(T / rw);
+    } else if (r.type === 'bedroom') {
+      rw = Math.round(Math.sqrt(T * 1.35));
+      rh = Math.round(T / rw);
+    } else if (r.type === 'bathroom') {
+      rw = Math.round(Math.sqrt(T * 1.2));
+      rh = Math.round(T / rw);
+    } else if (r.type === 'corridor') {
+      rh = 6;
+      rw = Math.round(T / rh);
+    } else {
+      rw = Math.round(Math.sqrt(T * 1.2));
+      rh = Math.round(T / rw);
+    }
+    roomDims[r.name] = { w: rw, h: rh };
+  });
+
+  const finalRooms = [];
+  const finalRoomsIter2 = [];
+  const packerSteps = [];
+
+  let curX = 5;
+  let curY = 20;
+
+  const liv = rooms.find(r => r.type === 'living');
+  const livDim = roomDims[liv.name];
+  const livPos = { name: liv.name, type: 'living', x: curX, y: curY, w: livDim.w, h: livDim.h, area: livDim.w * livDim.h, dims: `${livDim.w}' × ${livDim.h}'` };
+  finalRooms.push(livPos);
+  packerSteps.push({ ...livPos, anchor: [curX, curY], log: `[Packer] Placing ${liv.name.toUpperCase()} in south zone... anchor (${curX},${curY}) selected. Fit OK.` });
+
+  const kit = rooms.find(r => r.type === 'kitchen');
+  const kitDim = roomDims[kit.name];
+  curX += livDim.w;
+  const kitPos = { name: kit.name, type: 'kitchen', x: curX, y: curY, w: kitDim.w, h: kitDim.h, area: kitDim.w * kitDim.h, dims: `${kitDim.w}' × ${kitDim.h}'` };
+  finalRooms.push(kitPos);
+  packerSteps.push({ ...kitPos, anchor: [curX, curY], log: `[Packer] Placing ${kit.name.toUpperCase()} in south zone... anchor (${curX},${curY}) selected. Fit OK.` });
+
+  const mast = rooms.find(r => r.name.toLowerCase().includes('master') || r.name === 'Bedroom 1');
+  const mastDim = roomDims[mast.name];
+  curX = 5;
+  curY += Math.max(livDim.h, kitDim.h);
+  const mastPos = { name: mast.name, type: 'bedroom', x: curX, y: curY, w: mastDim.w, h: mastDim.h, area: mastDim.w * mastDim.h, dims: `${mastDim.w}' × ${mastDim.h}'` };
+  finalRooms.push(mastPos);
+  packerSteps.push({ ...mastPos, anchor: [curX, curY], log: `[Packer] Placing ${mast.name.toUpperCase()} in north zone... anchor (${curX},${curY}) selected. Fit OK.` });
+
+  const bed2 = rooms.find(r => r.name === 'Bedroom 2');
+  let bed2Dim = { w: 0, h: 0 };
+  if (bed2) {
+    bed2Dim = roomDims[bed2.name];
+    curX += mastDim.w;
+    const bed2Pos = { name: bed2.name, type: 'bedroom', x: curX, y: curY, w: bed2Dim.w, h: bed2Dim.h, area: bed2Dim.w * bed2Dim.h, dims: `${bed2Dim.w}' × ${bed2Dim.h}'` };
+    finalRooms.push(bed2Pos);
+    packerSteps.push({ ...bed2Pos, anchor: [curX, curY], log: `[Packer] Placing ${bed2.name.toUpperCase()} in north zone... anchor (${curX},${curY}) selected. Fit OK.` });
+  }
+
+  const bath1 = rooms.find(r => r.name === 'Bath 1');
+  const bath1Dim = roomDims[bath1.name];
+  curX = bed2 ? (5 + mastDim.w + bed2Dim.w) : (5 + mastDim.w);
+  const overlapX = curX - 4;
+  const bath1PosIter1 = { name: bath1.name, type: 'bathroom', x: overlapX, y: curY, w: bath1Dim.w, h: bath1Dim.h, area: bath1Dim.w * bath1Dim.h, dims: `${bath1Dim.w}' × ${bath1Dim.h}'` };
+  finalRooms.push(bath1PosIter1);
+  packerSteps.push({ ...bath1PosIter1, anchor: [overlapX, curY], log: `[Packer] Placing ${bath1.name.toUpperCase()} in north zone... anchor (${overlapX},${curY}) selected. Overlap detected (minor). Z3 checker flags warnings.` });
+
+  const bath2 = rooms.find(r => r.name === 'Bath 2');
+  let bath2Dim = { w: 0, h: 0 };
+  if (bath2) {
+    bath2Dim = roomDims[bath2.name];
+    const bath2X = curX + bath1Dim.w;
+    const bath2Pos = { name: bath2.name, type: 'bathroom', x: bath2X, y: curY, w: bath2Dim.w, h: bath2Dim.h, area: bath2Dim.w * bath2Dim.h, dims: `${bath2Dim.w}' × ${bath2Dim.h}'` };
+    finalRooms.push(bath2Pos);
+    packerSteps.push({ ...bath2Pos, anchor: [bath2X, curY], log: `[Packer] Placing ${bath2.name.toUpperCase()} in north zone... anchor (${bath2X},${curY}) selected. Fit OK.` });
+  }
+
+  const specialR = rooms.find(r => ['garage', 'study', 'office', 'gym'].includes(r.type));
+  let specDim = { w: 0, h: 0 };
+  if (specialR) {
+    specDim = roomDims[specialR.name];
+    const specX = curX + bath1Dim.w + bath2Dim.w;
+    const specPos = { name: specialR.name, type: specialR.type, x: specX, y: curY, w: specDim.w, h: specDim.h, area: specDim.w * specDim.h, dims: `${specDim.w}' × ${specDim.h}'` };
+    finalRooms.push(specPos);
+    packerSteps.push({ ...specPos, anchor: [specX, curY], log: `[Packer] Placing ${specialR.name.toUpperCase()} in north zone... anchor (${specX},${curY}) selected. Fit OK.` });
+  }
+
+  const corr = rooms.find(r => r.type === 'corridor');
+  const corrDim = roomDims[corr.name];
+  curX = 5;
+  curY += Math.max(mastDim.h, bed2Dim.h, bath1Dim.h);
+  const corrW_iter1 = 60;
+  const corrH_iter1 = 8;
+  const corrPosIter1 = { name: corr.name, type: 'corridor', x: curX, y: curY, w: corrW_iter1, h: corrH_iter1, area: corrW_iter1 * corrH_iter1, dims: `${corrW_iter1}' × ${corrH_iter1}'` };
+  finalRooms.push(corrPosIter1);
+  packerSteps.push({ ...corrPosIter1, anchor: [curX, curY], log: `[Packer] Placing ${corr.name.toUpperCase()} in center zone... anchor (${curX},${curY}) selected. Fit OK. Aspect ratio: 7.5 > 2.5.` });
+
+  finalRooms.forEach(r => {
+    if (r.name === bath1.name) {
+      finalRoomsIter2.push({ ...r, x: r.x + 4 });
+    } else if (r.name === corr.name) {
+      finalRoomsIter2.push({ ...r, w: 30, h: 12, area: 360, dims: "30' × 12'" });
+    } else {
+      finalRoomsIter2.push({ ...r });
+    }
+  });
+
+  return { finalRooms, finalRoomsIter2, packerSteps };
+}
+
+function generateConceptLayouts(rooms, targetAreas, width, height) {
+  const roomDims = {};
+  rooms.forEach(r => {
+    const T = targetAreas[r.name] || r.minArea;
+    let rw, rh;
+    if (r.type === 'living') { rw = Math.round(Math.sqrt(T * 1.3)); rh = Math.round(T / rw); }
+    else if (r.type === 'kitchen') { rw = Math.round(Math.sqrt(T * 1.1)); rh = Math.round(T / rw); }
+    else if (r.type === 'bedroom') { rw = Math.round(Math.sqrt(T * 1.2)); rh = Math.round(T / rw); }
+    else if (r.type === 'bathroom') { rw = Math.round(Math.sqrt(T * 1.2)); rh = Math.round(T / rw); }
+    else if (r.type === 'corridor') { rh = 6; rw = Math.round(T / rh); }
+    else { rw = Math.round(Math.sqrt(T * 1.2)); rh = Math.round(T / rw); }
+    roomDims[r.name] = { w: rw, h: rh };
+  });
+
+  const liv = rooms.find(r => r.type === 'living');
+  const kit = rooms.find(r => r.type === 'kitchen');
+  const mast = rooms.find(r => r.name.toLowerCase().includes('master') || r.name === 'Bedroom 1');
+  const bed2 = rooms.find(r => r.name === 'Bedroom 2');
+  const bath1 = rooms.find(r => r.name === 'Bath 1');
+  const bath2 = rooms.find(r => r.name === 'Bath 2');
+  const corr = rooms.find(r => r.type === 'corridor');
+  const specialR = rooms.find(r => ['garage', 'study', 'office', 'gym'].includes(r.type));
+
+  const livDim = roomDims[liv.name];
+  const kitDim = roomDims[kit.name];
+  const mastDim = roomDims[mast.name];
+  const bed2Dim = bed2 ? roomDims[bed2.name] : { w: 0, h: 0 };
+  const bath1Dim = roomDims[bath1.name];
+  const bath2Dim = bath2 ? roomDims[bath2.name] : { w: 0, h: 0 };
+  const corrDim = roomDims[corr.name];
+  const specDim = specialR ? roomDims[specialR.name] : { w: 0, h: 0 };
+
+  // --- CONCEPT A: Linear ---
+  const roomsA = [];
+  roomsA.push({ name: liv.name, type: 'living', x: 5, y: 20, w: livDim.w, h: livDim.h, area: livDim.w * livDim.h, dims: `${livDim.w}' × ${livDim.h}'` });
+  roomsA.push({ name: kit.name, type: 'kitchen', x: 5 + livDim.w, y: 20, w: kitDim.w, h: kitDim.h, area: kitDim.w * kitDim.h, dims: `${kitDim.w}' × ${kitDim.h}'` });
+  roomsA.push({ name: mast.name, type: 'bedroom', x: 5, y: 20 + livDim.h, w: mastDim.w, h: mastDim.h, area: mastDim.w * mastDim.h, dims: `${mastDim.w}' × ${mastDim.h}'` });
+  if (bed2) {
+    roomsA.push({ name: bed2.name, type: 'bedroom', x: 5 + mastDim.w, y: 20 + livDim.h, w: bed2Dim.w, h: bed2Dim.h, area: bed2Dim.w * bed2Dim.h, dims: `${bed2Dim.w}' × ${bed2Dim.h}'` });
+  }
+  const corrY_A = 20 + livDim.h + Math.max(mastDim.h, bed2Dim.h);
+  roomsA.push({ name: corr.name, type: 'corridor', x: 5, y: corrY_A, w: 40, h: 8, area: 320, dims: "40' × 8'" });
+  roomsA.push({ name: bath1.name, type: 'bathroom', x: 45, y: corrY_A, w: bath1Dim.w, h: bath1Dim.h, area: bath1Dim.w * bath1Dim.h, dims: `${bath1Dim.w}' × ${bath1Dim.h}'` });
+  if (bath2) {
+    roomsA.push({ name: bath2.name, type: 'bathroom', x: 45 + bath1Dim.w, y: corrY_A, w: bath2Dim.w, h: bath2Dim.h, area: bath2Dim.w * bath2Dim.h, dims: `${bath2Dim.w}' × ${bath2Dim.h}'` });
+  }
+  if (specialR) {
+    roomsA.push({ name: specialR.name, type: specialR.type, x: 5 + livDim.w + kitDim.w, y: 20, w: specDim.w, h: specDim.h, area: specDim.w * specDim.h, dims: `${specDim.w}' × ${specDim.h}'` });
+  }
+
+  // --- CONCEPT B: West/East Split ---
+  const roomsB = [];
+  roomsB.push({ name: liv.name, type: 'living', x: 5, y: 20, w: livDim.w, h: livDim.h, area: livDim.w * livDim.h, dims: `${livDim.w}' × ${livDim.h}'` });
+  roomsB.push({ name: kit.name, type: 'kitchen', x: 5, y: 20 + livDim.h, w: kitDim.w, h: kitDim.h, area: kitDim.w * kitDim.h, dims: `${kitDim.w}' × ${kitDim.h}'` });
+  const corrX_B = 5 + Math.max(livDim.w, kitDim.w);
+  roomsB.push({ name: corr.name, type: 'corridor', x: corrX_B, y: 20, w: 8, h: 42, area: 336, dims: "8' × 42'" });
+  roomsB.push({ name: mast.name, type: 'bedroom', x: corrX_B + 8, y: 20, w: mastDim.w, h: mastDim.h, area: mastDim.w * mastDim.h, dims: `${mastDim.w}' × ${mastDim.h}'` });
+  if (bed2) {
+    roomsB.push({ name: bed2.name, type: 'bedroom', x: corrX_B + 8, y: 20 + mastDim.h, w: bed2Dim.w, h: bed2Dim.h, area: bed2Dim.w * bed2Dim.h, dims: `${bed2Dim.w}' × ${bed2Dim.h}'` });
+  }
+  roomsB.push({ name: bath1.name, type: 'bathroom', x: corrX_B + 8 + Math.max(mastDim.w, bed2Dim.w), y: 20, w: bath1Dim.w, h: bath1Dim.h, area: bath1Dim.w * bath1Dim.h, dims: `${bath1Dim.w}' × ${bath1Dim.h}'` });
+  if (bath2) {
+    roomsB.push({ name: bath2.name, type: 'bathroom', x: corrX_B + 8 + Math.max(mastDim.w, bed2Dim.w), y: 20 + bath1Dim.h, w: bath2Dim.w, h: bath2Dim.h, area: bath2Dim.w * bath2Dim.h, dims: `${bath2Dim.w}' × ${bath2Dim.h}'` });
+  }
+  if (specialR) {
+    roomsB.push({ name: specialR.name, type: specialR.type, x: corrX_B + 8, y: 20 + mastDim.h + bed2Dim.h, w: specDim.w, h: specDim.h, area: specDim.w * specDim.h, dims: `${specDim.w}' × ${specDim.h}'` });
+  }
+
+  // --- CONCEPT C: Mixed ---
+  const roomsC = [];
+  roomsC.push({ name: liv.name, type: 'living', x: 5, y: 20, w: livDim.w, h: livDim.h, area: livDim.w * livDim.h, dims: `${livDim.w}' × ${livDim.h}'` });
+  roomsC.push({ name: mast.name, type: 'bedroom', x: 5 + livDim.w, y: 20, w: mastDim.w, h: mastDim.h, area: mastDim.w * mastDim.h, dims: `${mastDim.w}' × ${mastDim.h}'` });
+  const corrX_C = 5 + livDim.w + mastDim.w;
+  roomsC.push({ name: corr.name, type: 'corridor', x: corrX_C, y: 20, w: corrDim.w, h: corrDim.h, area: corrDim.w * corrDim.h, dims: `${corrDim.w}' × ${corrDim.h}'` });
+  roomsC.push({ name: bath1.name, type: 'bathroom', x: corrX_C, y: 20 + corrDim.h, w: bath1Dim.w, h: bath1Dim.h, area: bath1Dim.w * bath1Dim.h, dims: `${bath1Dim.w}' × ${bath1Dim.h}'` });
+  roomsC.push({ name: kit.name, type: 'kitchen', x: 5 + livDim.w, y: 20 + mastDim.h, w: kitDim.w, h: kitDim.h, area: kitDim.w * kitDim.h, dims: `${kitDim.w}' × ${kitDim.h}'` });
+  if (bed2) {
+    roomsC.push({ name: bed2.name, type: 'bedroom', x: 5, y: 20 + livDim.h, w: bed2Dim.w, h: bed2Dim.h, area: bed2Dim.w * bed2Dim.h, dims: `${bed2Dim.w}' × ${bed2Dim.h}'` });
+  }
+  if (bath2) {
+    roomsC.push({ name: bath2.name, type: 'bathroom', x: 5 + livDim.w + kitDim.w, y: 20 + mastDim.h, w: bath2Dim.w, h: bath2Dim.h, area: bath2Dim.w * bath2Dim.h, dims: `${bath2Dim.w}' × ${bath2Dim.h}'` });
+  }
+  if (specialR) {
+    roomsC.push({ name: specialR.name, type: specialR.type, x: corrX_C, y: 20 + corrDim.h + bath1Dim.h, w: specDim.w, h: specDim.h, area: specDim.w * specDim.h, dims: `${specDim.w}' × ${specDim.h}'` });
+  }
+
+  return { A: roomsA, B: roomsB, C: roomsC };
+}
+
+function updateSubsequentMockData(width, height, corner, rooms, targetAreas) {
+  const { finalRooms, finalRoomsIter2, packerSteps } = generateDynamicLayoutAndSteps(rooms, targetAreas, width, height);
+
+  MOCK.finalRooms = finalRooms;
+  MOCK.finalRoomsIter2 = finalRoomsIter2;
+  MOCK.packerSteps = packerSteps;
+  
+  MOCK.conceptLayouts = generateConceptLayouts(rooms, targetAreas, width, height);
+
+  MOCK.layoutOptions = [
+    {
+      id: 'A', name: 'Linear',
+      desc: 'Linear Concept — placing social zones in the south and private zones in the north. Good for deep/narrow lots.',
+      zone_hints: {},
+      utilization: 88, worst_ratio: 1.8, rooms: rooms.length, z3: 'SAT'
+    },
+    {
+      id: 'B', name: 'Private East Wing',
+      desc: 'Private Wing Concept — social zones in the west and private wings in the east. Ideal for corner lot noise shielding.',
+      zone_hints: {},
+      utilization: 86, worst_ratio: 2.1, rooms: rooms.length, z3: 'UNSAT'
+    },
+    {
+      id: 'C', name: 'Social South-West',
+      desc: 'Mixed Concept — open social zones south/west, private rooms north/east. Maximizes backyard views.',
+      zone_hints: {},
+      utilization: 91, worst_ratio: 1.6, rooms: rooms.length, z3: 'SAT'
+    }
+  ];
+
+  rooms.forEach(r => {
+    const name = r.name;
+    const type = r.type;
+    // Concept A
+    if (type === 'living' || type === 'kitchen' || type === 'garage') {
+      MOCK.layoutOptions[0].zone_hints[name] = 'south';
+    } else if (type === 'bedroom' || type === 'bathroom') {
+      MOCK.layoutOptions[0].zone_hints[name] = 'north';
+    } else {
+      MOCK.layoutOptions[0].zone_hints[name] = 'center';
+    }
+    // Concept B
+    if (type === 'living' || type === 'kitchen') {
+      MOCK.layoutOptions[1].zone_hints[name] = 'west';
+    } else if (type === 'bedroom' || type === 'bathroom') {
+      MOCK.layoutOptions[1].zone_hints[name] = 'east';
+    } else {
+      MOCK.layoutOptions[1].zone_hints[name] = 'center';
+    }
+    // Concept C
+    if (type === 'living') {
+      MOCK.layoutOptions[2].zone_hints[name] = 'south';
+    } else if (type === 'kitchen') {
+      MOCK.layoutOptions[2].zone_hints[name] = 'west';
+    } else if (type === 'bedroom' || type === 'bathroom') {
+      MOCK.layoutOptions[2].zone_hints[name] = 'north';
+    } else {
+      MOCK.layoutOptions[2].zone_hints[name] = 'center';
+    }
+  });
+
+  const bath1 = rooms.find(r => r.name === 'Bath 1');
+  const bed2 = rooms.find(r => r.name === 'Bedroom 2');
+  const corridor = rooms.find(r => r.type === 'corridor');
+
+  const b1Pos = finalRooms.find(r => r.name === bath1.name);
+  const overlapX = b1Pos.x;
+  const curY = b1Pos.y;
+
+  MOCK.verifyReport = {
+    checks: [
+      'Setback compliance', 'Tree exclusion', 'Lot coverage ≤ 50%',
+      `Room checklist (${rooms.length}/${rooms.length})`, 'No overlap', 'Aspect ratios ≤ 2.5',
+      'Min areas met', 'Door placement valid', 'Window placement valid'
+    ],
+    failing: [4, 5]
+  };
+
+  MOCK.surgeonLog = [
+    '[Verifier] Z3 validation check: UNSAT.',
+    '[Verifier] Found 2 errors:',
+    `  - Overlap: ${bath1.name.toLowerCase()} overlaps ${bed2 ? bed2.name.toLowerCase() : 'bedroom'} from x=${overlapX} to x=${overlapX + 2}.`,
+    `  - Aspect Ratio: ${corridor.name.toLowerCase()} aspect ratio 7.5 exceeds limit 2.5.`,
+    '────────────────────────────────────────────────────────',
+    '[Repair] Pass 1: Relaxing zone hints...',
+    '[Repair] Attempt 1/3: south-north fallback... Z3 check: UNSAT.',
+    '[Repair] Attempt 2/3: neutral fallback (all zones = any)... Z3 check: UNSAT.',
+    '[Repair] Pass 1 failed to converge. Activating Pass 2: Surgeon Agent...',
+    `[Surgeon] Iteration 1/5: Fixing ${bath1.name.toLowerCase()} overlap.`,
+    `[Surgeon] Action: Apply bbox shift: ${bath1.name.toLowerCase()} x+4 (new x: ${overlapX + 4}, y: ${curY}).`,
+    '[Surgeon] Re-running Z3... Overlap resolved. ✓',
+    `[Surgeon] Iteration 2/5: Fixing ${corridor.name.toLowerCase()} aspect ratio.`,
+    `[Surgeon] Action: Resizing ${corridor.name.toLowerCase()} w: 30, h: 8 -> 12 (new aspect ratio: 2.5).`,
+    '[Surgeon] Re-running Z3... Aspect ratio resolved. ✓',
+    '────────────────────────────────────────────────────────',
+    'All checks passed. Layout status: SAT ✓'
+  ];
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAGE 1 — INTAKE
+   ═══════════════════════════════════════════════════════════ */
+function parseLotPolygon(str) {
+  try {
+    const arr = JSON.parse(str);
+    if (Array.isArray(arr) && arr.length >= 3 && arr.every(p => Array.isArray(p) && p.length === 2 && typeof p[0] === 'number' && typeof p[1] === 'number')) {
+      return arr;
+    }
+  } catch(e) {}
+  return null;
+}
+
+function drawLotCanvas() {
+  const canvas = $('#lotCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const coordsStr = $('#lotCoords').value;
+  const polygon = parseLotPolygon(coordsStr) || MOCK.groundTruth.lot_polygon;
+  
+  const front = parseFloat($('#frontSetback').value) || 0;
+  const rear = parseFloat($('#rearSetback').value) || 0;
+  const left = parseFloat($('#leftSetback').value) || 0;
+  const right = parseFloat($('#rightSetback').value) || 0;
+  const tx_val = parseFloat($('#treeX').value) || 0;
+  const ty_val = parseFloat($('#treeY').value) || 0;
+  const tr_val = parseFloat($('#treeRadius').value) || 0;
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  polygon.forEach(p => {
+    if (p[0] < minX) minX = p[0];
+    if (p[0] > maxX) maxX = p[0];
+    if (p[1] < minY) minY = p[1];
+    if (p[1] > maxY) maxY = p[1];
+  });
+
+  const lotW = maxX - minX;
+  const lotH = maxY - minY;
+  const scale = Math.min(w / (lotW || 1), h / (lotH || 1)) * 0.8;
+  const ox = (w - lotW * scale) / 2 - minX * scale;
+  const oy = (h - lotH * scale) / 2 + maxY * scale;
+
+  function tx(x) { return ox + x * scale; }
+  function ty(y) { return oy - y * scale; }
+
+  ctx.beginPath();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 2;
+  polygon.forEach((p, i) => {
+    i === 0 ? ctx.moveTo(tx(p[0]), ty(p[1])) : ctx.lineTo(tx(p[0]), ty(p[1]));
+  });
+  ctx.closePath();
+  ctx.stroke();
+
+  const bb_x_min = left;
+  const bb_x_max = maxX - right;
+  const bb_y_min = front;
+  const bb_y_max = maxY - rear;
+
+  if (bb_x_max > bb_x_min && bb_y_max > bb_y_min) {
+    ctx.beginPath();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.strokeRect(tx(bb_x_min), ty(bb_y_max), (bb_x_max - bb_x_min) * scale, (bb_y_max - bb_y_min) * scale);
+  }
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#3b82f6';
+  ctx.arc(tx(tx_val), ty(ty_val), tr_val * scale, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+  ctx.font = '10px Inter, sans-serif';
+  ctx.fillStyle = '#9b9ba4';
+  ctx.fillText('Lot', tx(minX + 2), ty(maxY - 2));
+  if (bb_x_max > bb_x_min && bb_y_max > bb_y_min) {
+    ctx.fillText('Buildable', tx(bb_x_min + 2), ty(bb_y_max - 2));
+  }
+  ctx.fillText('Tree zone', tx(tx_val - 20), ty(ty_val - tr_val - 4));
+}
+
+function syntaxHighlightJson(obj) {
+  const str = JSON.stringify(obj, null, 2);
+  return str.replace(/("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?/g, (match, strVal, colon, bool) => {
+    if (colon) return `<span class="json-key">${strVal}</span>${colon}`;
+    if (bool !== undefined) return `<span class="json-bool">${match}</span>`;
+    if (/^-?\d/.test(match)) return `<span class="json-number">${match}</span>`;
+    return `<span class="json-string">${match}</span>`;
+  });
+}
+
+function initGroundTruthDisplay() {
+  $('#gtJson').innerHTML = syntaxHighlightJson({ status: 'pending', message: '...' });
+}
+
+async function runIntakeAgent() {
+  const polygon = window.plotEditor ? window.plotEditor.vertices : MOCK.groundTruth.lot_polygon;
+  const front = 15;
+  const rear = 15;
+  const left = 5;
+  const right = 5;
+  const tx_val = parseFloat($('#treeX').value) || 75;
+  const ty_val = parseFloat($('#treeY').value) || 88;
+  const tr_val = parseFloat($('#treeRadius').value) || 12;
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  polygon.forEach(p => {
+    if (p[0] < minX) minX = p[0];
+    if (p[0] > maxX) maxX = p[0];
+    if (p[1] < minY) minY = p[1];
+    if (p[1] > maxY) maxY = p[1];
+  });
+  const bb_x_min = left;
+  const bb_x_max = maxX - right;
+  const bb_y_min = front;
+  const bb_y_max = maxY - rear;
+  const footprint = (bb_x_max - bb_x_min) * (bb_y_max - bb_y_min);
+  const actualFootprint = footprint > 0 ? footprint : 0;
+
+  const dynamicGroundTruth = {
+    lot_polygon: polygon,
+    buildable_box: { x_min: bb_x_min, y_min: bb_y_min, x_max: bb_x_max, y_max: bb_y_max },
+    max_footprint_sqft: actualFootprint,
+    required_rooms: state.rooms.map(r => r.name.toLowerCase().replace(/\s+/g, '')),
+    constraints: {
+      max_aspect_ratio: 2.5,
+      min_utilization: 0.85,
+      tree_center: [tx_val, ty_val],
+      tree_radius: tr_val,
+      setbacks: { front, rear, left, right }
+    }
+  };
+
+  MOCK.groundTruth = dynamicGroundTruth;
+  updateSubsequentMockData(maxX - minX, maxY - minY, state.corner, state.rooms, state.targetAreas);
+  state.intakeComplete = true;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAGE 2 — CONCEPT PITCHER
+   ═══════════════════════════════════════════════════════════ */
+function deltaClass(d) {
+  const abs = Math.abs(d);
+  if (abs <= 10) return 'delta-green';
+  if (abs <= 25) return 'delta-amber';
+  return 'delta-danger';
+}
+
+async function generateConcepts() {
+  setPipelineDot(3, 'running');
+  const strip = $('#genStrip');
+  strip.innerHTML = '';
+  $('#optionCards').style.display = 'none';
+  $('#hitlBar').style.display = 'none';
+
+  async function animateCard(i) {
+    const opt = MOCK.layoutOptions[i];
+    const card = document.createElement('div');
+    card.className = 'gen-card';
+    card.innerHTML = `
+      <div class="gen-letter">${opt.id}</div>
+      <div class="gen-name">${opt.name} Concept</div>
+      <div class="gen-status" id="gen-status-${i}">Pitching Concept...</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">A1 Pitcher Loop</div>`;
+    strip.appendChild(card);
+    setTimeout(() => card.classList.add('visible'), 50);
+
+    await delay(800);
+    const statusEl = document.getElementById(`gen-status-${i}`);
+    if (statusEl) statusEl.textContent = 'Checking Z3 baseline...';
+    
+    await delay(1000);
+    const statusEl2 = document.getElementById(`gen-status-${i}`);
+    if (statusEl2) {
+      if (opt.id === 'B') {
+        statusEl2.innerHTML = '<span style="color:var(--warning)">UNSAT ✗ (re-pitching)</span>';
+      } else {
+        statusEl2.innerHTML = '<span style="color:var(--success)">SAT ✓</span>';
+      }
+    }
+  }
+
+  await animateCard(0);
+  await delay(600);
+  await animateCard(1);
+  await delay(600);
+  await animateCard(2);
+
+  await delay(1200);
+
+  renderConceptCards();
+  $('#optionCards').style.display = 'grid';
+  renderHitlBar();
+  $('#hitlBar').style.display = 'flex';
+  state.pitcherGenerated = true;
+}
+
+function renderConceptCards() {
+  const container = $('#optionCards');
+  container.innerHTML = MOCK.layoutOptions.map(opt => {
+    const zoneLines = Object.entries(opt.zone_hints).map(([room, zone]) => 
+      `<tr><td>${room}</td><td><strong>${zone.toUpperCase()}</strong></td></tr>`
+    ).join('');
+
+    return `
+    <div class="option-card" id="option-${opt.id}" data-id="${opt.id}" style="display: flex; flex-direction: column; justify-content: space-between;">
+      <div class="option-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div><span style="font-size:24px;font-weight:700;color:var(--accent);">${opt.id}</span>
+        <span style="font-weight:600;margin-left:8px;">${opt.name}</span></div>
+        <button class="btn btn-primary select-btn" data-id="${opt.id}" style="padding: 6px 12px; font-size: 12px;">Select Concept</button>
+      </div>
+      <div class="option-body" style="margin-top: 12px; flex: 1; display: flex; flex-direction: column;">
+        <div style="text-align: center; margin-bottom: 12px;">
+          <canvas id="canvas-pitch-${opt.id}" width="260" height="200" style="width:100%; max-height:200px; border:1px solid var(--border); border-radius:6px; background:var(--bg-secondary); display:block;"></canvas>
+        </div>
+        <p class="option-desc" style="font-size: 11px; line-height: 1.4; margin-bottom: 8px;">${opt.desc}</p>
+        <div class="stats-panel" style="margin-bottom:12px; background: var(--bg-secondary); padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+          <div class="stat-row" style="display:flex; justify-content:space-between; font-size:11px;"><span>Baseline Status:</span><span class="badge ${opt.id === 'B' ? 'badge-unsat' : 'badge-sat'}">${opt.z3}</span></div>
+          <div class="stat-row" style="display:flex; justify-content:space-between; font-size:11px; margin-top:4px;"><span>Est. Space Utilization:</span><strong>${opt.utilization}%</strong></div>
+        </div>
+        <h4 style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">Target Zone Mapping:</h4>
+        <table style="font-size:10px; width: 100%;">
+          <thead><tr><th style="padding:4px;">Room</th><th style="padding:4px;">Preferred Zone</th></tr></thead>
+          <tbody>${zoneLines}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('.select-btn').forEach(btn => {
+    btn.addEventListener('click', () => selectConcept(btn.dataset.id));
+  });
+
+  // Render layouts on their respective canvases
+  MOCK.layoutOptions.forEach(opt => {
+    const canvas = document.getElementById(`canvas-pitch-${opt.id}`);
+    if (canvas && MOCK.conceptLayouts && MOCK.conceptLayouts[opt.id]) {
+      drawFloorPlanPreview(canvas, MOCK.conceptLayouts[opt.id]);
+    }
+  });
+}
+
+function drawFloorPlanPreview(canvas, rooms) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const gt = MOCK.groundTruth;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  gt.lot_polygon.forEach(p => {
+    if (p[0] < minX) minX = p[0];
+    if (p[0] > maxX) maxX = p[0];
+    if (p[1] < minY) minY = p[1];
+    if (p[1] > maxY) maxY = p[1];
+  });
+
+  const lotW = maxX - minX;
+  const lotH = maxY - minY;
+  const scale = Math.min((w - 20) / (lotW || 1), (h - 20) / (lotH || 1));
+  const ox = (w - lotW * scale) / 2 - minX * scale;
+  const oy = (h - lotH * scale) / 2 + maxY * scale;
+
+  function tx(x) { return ox + x * scale; }
+  function ty(y) { return oy - y * scale; }
+
+  // Draw buildable area setback (dashed box)
+  const bb = gt.buildable_box;
+  ctx.beginPath();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(tx(bb.x_min), ty(bb.y_max), (bb.x_max - bb.x_min) * scale, (bb.y_max - bb.y_min) * scale);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Rooms drawing
+  rooms.forEach(room => {
+    const colors = ROOM_COLORS[room.type] || ROOM_COLORS.corridor;
+    ctx.fillStyle = getCssColor(colors.fillVar, 0.2);
+    ctx.strokeStyle = getCssColor(colors.borderVar, 0.8);
+    ctx.lineWidth = 1;
+    ctx.fillRect(tx(room.x), ty(room.y + room.h), room.w * scale, room.h * scale);
+    ctx.strokeRect(tx(room.x), ty(room.y + room.h), room.w * scale, room.h * scale);
+
+    ctx.fillStyle = '#f0f0f2';
+    ctx.font = '7px sans-serif';
+    ctx.textAlign = 'center';
+    const cx = tx(room.x) + (room.w * scale) / 2;
+    const cy = ty(room.y + room.h) + (room.h * scale) / 2;
+    
+    let dispName = room.name;
+    if (dispName.toLowerCase().includes('master')) dispName = 'Mast';
+    else if (dispName.toLowerCase().includes('bedroom')) dispName = 'Bed' + dispName.split(' ').pop();
+    else if (dispName.toLowerCase().includes('corridor')) dispName = 'Corr';
+    else if (dispName.toLowerCase().includes('bathroom')) dispName = 'Bath' + dispName.split(' ').pop();
+    
+    ctx.fillText(dispName.toUpperCase(), cx, cy + 2.5);
+  });
+}
+
+async function selectConcept(id) {
+  $$('.option-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.id === id);
+    c.classList.toggle('dimmed', c.dataset.id !== id);
+  });
+
+  state.selectedConcept = id;
+  state.verificationComplete = false;
+  const opt = MOCK.layoutOptions.find(o => o.id === id);
+
+  MOCK.finalRoomsIter2 = MOCK.conceptLayouts[id];
+
+  if (opt.z3 === 'SAT') {
+    MOCK.verifyReport = {
+      checks: [
+        'Setback compliance', 'Tree exclusion', 'Lot coverage ≤ 50%',
+        `Room checklist (${state.rooms.length}/${state.rooms.length})`, 'No overlap', 'Aspect ratios ≤ 2.5',
+        'Min areas met', 'Door placement valid', 'Window placement valid'
+      ],
+      failing: []
+    };
+    MOCK.surgeonLog = [
+      '[Verifier] Z3 validation check: SAT ✓',
+      '[Verifier] All constraints satisfied! Proceeding to render.',
+      '────────────────────────────────────────────────────────',
+      'Layout status: SAT ✓'
+    ];
+    MOCK.finalRooms = MOCK.conceptLayouts[id];
+  } else {
+    MOCK.verifyReport = {
+      checks: [
+        'Setback compliance', 'Tree exclusion', 'Lot coverage ≤ 50%',
+        `Room checklist (${state.rooms.length}/${state.rooms.length})`, 'No overlap', 'Aspect ratios ≤ 2.5',
+        'Min areas met', 'Door placement valid', 'Window placement valid'
+      ],
+      failing: [4, 5]
+    };
+    
+    const bath1 = state.rooms.find(r => r.name === 'Bath 1');
+    const bed2 = state.rooms.find(r => r.name === 'Bedroom 2');
+    const corr = state.rooms.find(r => r.type === 'corridor');
+    const b1Pos = MOCK.conceptLayouts[id].find(r => r.name === bath1.name);
+    const overlapX = b1Pos.x;
+    
+    MOCK.finalRooms = MOCK.conceptLayouts[id].map(r => {
+      if (r.name === bath1.name) return { ...r, x: r.x - 4 }; 
+      if (r.name === corr.name) return { ...r, w: r.w + 20, area: r.area + 160 }; 
+      return { ...r };
+    });
+    
+    MOCK.surgeonLog = [
+      '[Verifier] Z3 validation check: UNSAT.',
+      '[Verifier] Found 2 errors:',
+      `  - Overlap: ${bath1.name.toLowerCase()} overlaps ${bed2 ? bed2.name.toLowerCase() : 'bedroom'} near x=${overlapX}.`,
+      `  - Aspect Ratio: ${corr.name.toLowerCase()} aspect ratio exceeds limit 2.5.`,
+      '────────────────────────────────────────────────────────',
+      '[Repair] Pass 1: Relaxing zone hints...',
+      '[Repair] Attempt 1/3: south-north fallback... Z3 check: UNSAT.',
+      '[Repair] Attempt 2/3: neutral fallback (all zones = any)... Z3 check: UNSAT.',
+      '[Repair] Pass 1 failed to converge. Activating Pass 2: Surgeon Agent...',
+      `[Surgeon] Iteration 1/5: Fixing ${bath1.name.toLowerCase()} overlap.`,
+      `[Surgeon] Action: Apply bbox shift: ${bath1.name.toLowerCase()} x+4 (new x: ${overlapX}).`,
+      '[Surgeon] Re-running Z3... Overlap resolved. ✓',
+      `[Surgeon] Iteration 2/5: Fixing ${corr.name.toLowerCase()} aspect ratio.`,
+      `[Surgeon] Action: Resizing ${corr.name.toLowerCase()} to limit aspect ratio to 2.5.`,
+      '[Surgeon] Re-running Z3... Aspect ratio resolved. ✓',
+      '────────────────────────────────────────────────────────',
+      'All checks passed. Layout status: SAT ✓'
+    ];
+  }
+
+  const bar = $('#confirmBar');
+  bar.textContent = `Concept ${id} selected (${opt.name}). Proceeding to Output...`;
+  bar.classList.add('visible');
+  
+  setPipelineDot(3, 'done');
+  unlockPage('output');
+  
+  await delay(1000);
+  bar.classList.remove('visible');
+  
+  if (resolveConceptSelection) {
+    const resolve = resolveConceptSelection;
+    resolveConceptSelection = null;
+    resolve(id);
+  }
+  
+  navigateTo('output');
+}
+
+function renderHitlBar() {
+  const bar = $('#hitlBar');
+  if (state.refinementRound >= 3) {
+    bar.innerHTML = `
+      <div class="hitl-warning">
+        <span>🔒 Max refinement rounds reached. Please select one of the concept options above.</span>
+      </div>`;
+  } else {
+    bar.innerHTML = `
+      <span style="font-size:13px;white-space:nowrap;">Not satisfied with zones? Describe pitch changes:</span>
+      <input type="text" id="hitlInput" placeholder="e.g. shift master bedroom to south east wing, align kitchen with living">
+      <button class="btn btn-secondary" id="regenerateBtn">Regenerate Pitch</button>
+      <span class="round-counter" id="roundCounter">Refinement round ${state.refinementRound} / 3</span>`;
+    
+    $('#regenerateBtn').addEventListener('click', regenerateConcepts);
+    $('#hitlInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') regenerateConcepts();
+    });
+  }
+}
+
+async function regenerateConcepts() {
+  if (state.refinementRound >= 3) {
+    showToast('Max refinement rounds reached. Please select a concept.', 'warning');
+    return;
+  }
+  state.pitcherGenerated = false;
+  state.refinementRound++;
+  
+  if (state.refinementRound >= 3) {
+    showToast('Max refinement rounds reached. Please select a concept.', 'warning');
+  }
+  
+  MOCK.layoutOptions.forEach(o => {
+    o.utilization = Math.min(95, o.utilization + Math.floor(Math.random() * 3) - 1);
+  });
+  
+  await generateConcepts();
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   PAGE 4 — VERIFICATION
+   ═══════════════════════════════════════════════════════════ */
+let verificationStarted = false;
+
+async function startVerification() {
+  if (verificationStarted) return;
+  verificationStarted = true;
+  setPipelineDot(4, 'running');
+  const list = $('#checkList');
+  list.innerHTML = '';
+  const checks = MOCK.verifyReport.checks;
+
+  for (let i = 0; i < checks.length; i++) {
+    await delay(300);
+    const li = document.createElement('li');
+    li.className = 'check-item';
+    li.setAttribute('data-tooltip', CHECK_DESCRIPTIONS[checks[i]] || checks[i]);
+    li.innerHTML = `<span class="check-icon check-pending">⏳</span><span>${checks[i]}</span>`;
+    list.appendChild(li);
+  }
+
+  await delay(1500);
+
+  const items = list.querySelectorAll('.check-item');
+  for (let i = 0; i < items.length; i++) {
+    const icon = items[i].querySelector('.check-icon');
+    const isFail = MOCK.verifyReport.failing.includes(i);
+    if (isFail) {
+      icon.textContent = '✗';
+      icon.className = 'check-icon check-fail';
+    } else {
+      icon.textContent = '✓';
+      icon.className = 'check-icon check-pass';
+    }
+    await delay(200);
+  }
+
+  await delay(500);
+  $('#surgeonPanel').style.display = 'block';
+  await runSurgeonLog();
+}
+
+async function runSurgeonLog() {
+  const log = $('#surgeonLog');
+  log.innerHTML = '';
+  drawFloorPlan($('#verifyCanvas'), MOCK.finalRooms, false);
+
+  for (const line of MOCK.surgeonLog) {
+    await delay(400);
+    const div = document.createElement('div');
+    div.className = 'log-line';
+    if (line.includes('SAT ✓') || line.includes('resolved')) div.classList.add('log-success');
+    if (line.startsWith('─')) div.classList.add('log-divider');
+    div.textContent = line;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+
+    if (line.includes('overlap resolved')) {
+      drawFloorPlan($('#verifyCanvas'), MOCK.finalRoomsIter2, false);
+    }
+    if (line.includes('aspect ratio resolved')) {
+      drawFloorPlan($('#verifyCanvas'), MOCK.finalRoomsIter2, true);
+    }
+  }
+
+  const badge = $('#surgeonBadge');
+  badge.className = 'badge badge-sat';
+  badge.textContent = 'SAT';
+
+  $('#checkList .check-icon').forEach(icon => {
+    icon.textContent = '✓';
+    icon.className = 'check-icon check-pass';
+  });
+
+  setPipelineDot(4, 'done');
+  unlockPage('output');
+  $('#verifyProceed').style.display = 'block';
+  state.verificationComplete = true;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CANVAS RENDERING
+   ═══════════════════════════════════════════════════════════ */
+function drawFloorPlan(canvas, rooms, rich = false, isFullscreen = false) {
+  if (!canvas) return;
+  if (!isFullscreen) {
+    const parent = canvas.parentElement;
+    canvas.width = parent.clientWidth || 600;
+    canvas.height = rich ? 500 : 450;
+  }
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const gt = MOCK.groundTruth;
+  
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  gt.lot_polygon.forEach(p => {
+    if (p[0] < minX) minX = p[0];
+    if (p[0] > maxX) maxX = p[0];
+    if (p[1] < minY) minY = p[1];
+    if (p[1] > maxY) maxY = p[1];
+  });
+
+  const lotW = maxX - minX;
+  const lotH = maxY - minY;
+  const scale = Math.min((w - 80) / (lotW || 1), (h - 80) / (lotH || 1));
+  const ox = (w - lotW * scale) / 2 - minX * scale;
+  const oy = (h - lotH * scale) / 2 + maxY * scale;
+
+  function tx(x) { return ox + x * scale; }
+  function ty(y) { return oy - y * scale; }
+
+  // Lot Boundary (dashed outline)
+  ctx.beginPath();
+  ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 1.5;
+  gt.lot_polygon.forEach((p, i) => {
+    i === 0 ? ctx.moveTo(tx(p[0]), ty(p[1])) : ctx.lineTo(tx(p[0]), ty(p[1]));
+  });
+  ctx.closePath();
+  ctx.stroke();
+
+  // Setback Box (dashed)
+  const bb = gt.buildable_box;
+  ctx.beginPath();
+  ctx.strokeStyle = '#f59e0b';
+  ctx.strokeRect(tx(bb.x_min), ty(bb.y_max), (bb.x_max - bb.x_min) * scale, (bb.y_max - bb.y_min) * scale);
+  ctx.stroke();
+
+  // Tree Circle (dashed)
+  const tc = gt.constraints.tree_center;
+  ctx.beginPath();
+  ctx.strokeStyle = '#3b82f6';
+  ctx.arc(tx(tc[0]), ty(tc[1]), gt.constraints.tree_radius * scale, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Rooms drawing
+  const alpha = rich ? 0.3 : 0.15;
+  rooms.forEach(room => {
+    const colors = ROOM_COLORS[room.type] || ROOM_COLORS.corridor;
+    ctx.fillStyle = getCssColor(colors.fillVar, alpha);
+    ctx.strokeStyle = getCssColor(colors.borderVar, 1);
+    ctx.lineWidth = rich ? 2 : 1.5;
+    ctx.fillRect(tx(room.x), ty(room.y + room.h), room.w * scale, room.h * scale);
+    ctx.strokeRect(tx(room.x), ty(room.y + room.h), room.w * scale, room.h * scale);
+
+    ctx.fillStyle = '#f0f0f2';
+    ctx.font = rich ? 'bold 11px Inter, sans-serif' : 'bold 10px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    const cx = tx(room.x) + (room.w * scale) / 2;
+    const cy = ty(room.y + room.h) + (room.h * scale) / 2;
+    if (rich && room.dims) {
+      ctx.fillText(room.name.toUpperCase(), cx, cy - 12);
+      ctx.font = '10px Inter, sans-serif';
+      ctx.fillText(`${room.area} sq ft`, cx, cy + 2);
+      ctx.fillStyle = '#9b9ba4';
+      ctx.font = '9px Inter, sans-serif';
+      ctx.fillText(`(${room.dims})`, cx, cy + 14);
+    } else {
+      ctx.fillText(room.name.toUpperCase(), cx, cy - 6);
+      ctx.font = '9px Inter, sans-serif';
+      ctx.fillText(`${room.area} sq ft`, cx, cy + 8);
+    }
+  });
+
+  // Doors (red lines)
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  
+  const livingRoom = rooms.find(r => r.type === 'living');
+  const kitchenRoom = rooms.find(r => r.type === 'kitchen');
+  const masterRoom = rooms.find(r => r.name.toLowerCase().includes('master') || r.name === 'Bedroom 1');
+  const bedroom2Room = rooms.find(r => r.name === 'Bedroom 2');
+  const bath1Room = rooms.find(r => r.name === 'Bath 1');
+  const bath2Room = rooms.find(r => r.name === 'Bath 2');
+
+  // Living to Kitchen door
+  if (livingRoom && kitchenRoom) {
+    const wallY = kitchenRoom.y + 8;
+    ctx.moveTo(tx(kitchenRoom.x), ty(wallY)); ctx.lineTo(tx(kitchenRoom.x), ty(wallY + 4));
+  }
+  // Master door
+  if (masterRoom) {
+    const doorX = masterRoom.x + 10;
+    const doorY = masterRoom.y + masterRoom.h;
+    ctx.moveTo(tx(doorX), ty(doorY)); ctx.lineTo(tx(doorX + 4), ty(doorY));
+  }
+  // Bedroom 2 door
+  if (bedroom2Room) {
+    const doorX = bedroom2Room.x + 10;
+    const doorY = bedroom2Room.y + bedroom2Room.h;
+    ctx.moveTo(tx(doorX), ty(doorY)); ctx.lineTo(tx(doorX + 4), ty(doorY));
+  }
+  // Bath 1 door
+  if (bath1Room) {
+    const doorX = bath1Room.x;
+    const doorY = bath1Room.y + 4;
+    ctx.moveTo(tx(doorX), ty(doorY)); ctx.lineTo(tx(doorX), ty(doorY + 4));
+  }
+  // Bath 2 door
+  if (bath2Room) {
+    const doorX = bath2Room.x;
+    const doorY = bath2Room.y + 4;
+    ctx.moveTo(tx(doorX), ty(doorY)); ctx.lineTo(tx(doorX), ty(doorY + 4));
+  }
+  ctx.stroke();
+
+  // Windows (blue lines)
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  if (livingRoom) {
+    ctx.moveTo(tx(livingRoom.x), ty(livingRoom.y + 6)); ctx.lineTo(tx(livingRoom.x), ty(livingRoom.y + 14));
+  }
+  if (kitchenRoom) {
+    ctx.moveTo(tx(kitchenRoom.x + kitchenRoom.w), ty(kitchenRoom.y + 4)); ctx.lineTo(tx(kitchenRoom.x + kitchenRoom.w), ty(kitchenRoom.y + 12));
+  }
+  if (masterRoom) {
+    ctx.moveTo(tx(masterRoom.x), ty(masterRoom.y + 4)); ctx.lineTo(tx(masterRoom.x), ty(masterRoom.y + 12));
+  }
+  if (bedroom2Room) {
+    ctx.moveTo(tx(bedroom2Room.x + 5), ty(bedroom2Room.y + bedroom2Room.h)); ctx.lineTo(tx(bedroom2Room.x + 13), ty(bedroom2Room.y + bedroom2Room.h));
+  }
+  ctx.stroke();
+
+  ctx.textAlign = 'left';
+}
+
+function drawOutputCanvas(canvas, rich = true, isFullscreen = false) {
+  drawFloorPlan(canvas, MOCK.finalRoomsIter2, rich, isFullscreen);
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+
+  // Legend bottom-left
+  const legendItems = [
+    { label: 'Bedroom', color: getCssColor('--teal') },
+    { label: 'Bathroom', color: getCssColor('--amber') },
+    { label: 'Living/Kitchen', color: getCssColor('--success') },
+    { label: 'Corridor', color: getCssColor('--accent') }
+  ];
+  let ly = h - 90;
+  ctx.font = '10px Inter, sans-serif';
+  legendItems.forEach(item => {
+    ctx.fillStyle = item.color;
+    ctx.fillRect(16, ly, 10, 10);
+    ctx.fillStyle = '#9b9ba4';
+    ctx.fillText(item.label, 32, ly + 9);
+    ly += 16;
+  });
+
+  // Title block bottom-right
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  ctx.fillStyle = 'rgba(28,28,31,0.9)';
+  ctx.fillRect(w - 210, h - 110, 195, 95);
+  ctx.strokeStyle = getCssColor('--border');
+  ctx.strokeRect(w - 210, h - 110, 195, 95);
+  ctx.fillStyle = '#f0f0f2';
+  ctx.font = 'bold 11px Inter, sans-serif';
+  ctx.fillText('Project: PlotMySpace Layout', w - 200, h - 92);
+  ctx.font = '10px Inter, sans-serif';
+  ctx.fillStyle = '#9b9ba4';
+
+  const gt = MOCK.groundTruth;
+  const footprintVal = gt.max_footprint_sqft || 3850;
+  let habitableVal = 0;
+  MOCK.finalRoomsIter2.forEach(r => habitableVal += r.area);
+  const utilizationVal = Math.round((habitableVal / footprintVal) * 100);
+
+  const lines = [
+    `Date: ${today}`,
+    `Footprint: ${footprintVal.toLocaleString()} sq ft`,
+    `Habitable: ${habitableVal.toLocaleString()} sq ft`,
+    `Utilization: ${utilizationVal}%`
+  ];
+  lines.forEach((l, i) => ctx.fillText(l, w - 200, h - 74 + i * 16));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAGE 5 — OUTPUT
+   ═══════════════════════════════════════════════════════════ */
+function initOutputPage() {
+  const gt = MOCK.groundTruth;
+  const footprintVal = gt.max_footprint_sqft || 3850;
+  let habitableVal = 0;
+  MOCK.finalRoomsIter2.forEach(r => habitableVal += r.area);
+  const utilizationVal = Math.round((habitableVal / footprintVal) * 100);
+
+  $('#runSummary').innerHTML = `
+    <div class="summary-stat"><span class="label">Status</span><span>Complete</span></div>
+    <div class="summary-stat"><span class="label">Total iterations</span><span>2</span></div>
+    <div class="summary-stat"><span class="label">Utilization</span><span>${utilizationVal}%</span></div>
+    <div class="summary-stat"><span class="label">Rooms generated</span><span>${state.rooms.length} / ${state.rooms.length}</span></div>
+    <div class="summary-stat"><span class="label">Worst aspect ratio</span><span>1.9</span></div>
+    <div class="summary-stat"><span class="label">Z3 loops (inner)</span><span>1</span></div>
+    <div class="summary-stat"><span class="label">Surgeon loops</span><span>2</span></div>
+    <div class="summary-stat"><span class="label">Time elapsed</span><span>~14s</span></div>`;
+
+  $('#layerList').innerHTML = MOCK.dxfLayers.map(l => `
+    <li class="layer-item">
+      <span class="layer-swatch" style="background:${l.color}${l.dashed ? ';border:1px dashed #666' : ''}"></span>
+      <span>${l.name}</span>
+      <span style="margin-left:auto;color:var(--text-muted);font-size:11px;">ACI ${l.aci}</span>
+    </li>`).join('');
+
+  drawOutputCanvas($('#outputCanvas'));
+  setPipelineDot(3, 'done');
+  setStatusChip('Complete', 'complete');
+}
+
+function openFullscreen() {
+  const overlay = $('#fullscreenOverlay');
+  overlay.classList.add('active');
+  const fc = $('#fullscreenCanvas');
+  fc.width = window.innerWidth * 0.95;
+  fc.height = window.innerHeight * 0.9;
+  drawOutputCanvas(fc, true, true);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RUN PIPELINE (full auto sequence)
+   ═══════════════════════════════════════════════════════════ */
+async function runFullPipeline() {
+  if (state.pipelineRunning) return;
+  state.pipelineRunning = true;
+  $('#runPipelineBtn').disabled = true;
+  setStatusChip('Running...', 'running');
+
+  // 0. Plot Design
+  setPipelineDot(0, 'running');
+  navigateTo('plot-design');
+  await delay(1200);
+  
+  // Set default coordinates if we are in auto run
+  const defaultVertices = [[10, 10], [50, 10], [50, 45], [80, 45], [80, 80], [10, 80]];
+  if (window.plotEditor) {
+    window.plotEditor.vertices = defaultVertices;
+    window.plotEditor.setback_h = 5;
+    window.plotEditor.setback_v = 15;
+    window.plotEditor.draw();
+    syncEditorToUiControls();
+    updatePlotDesignValidation();
+  }
+  
+  setPipelineDot(0, 'done');
+  unlockPage('planning');
+  await delay(500);
+
+  // 1. Planning
+  setPipelineDot(1, 'running');
+  navigateTo('planning');
+  if (!state.briefConfirmed) {
+    $('#chatInput').value = '75×88 ft L-shaped corner lot in Portland R-2 zoning.';
+    await sendChatMessage();
+    await delay(500);
+    $('#chatInput').value = '3 bedrooms, master suite with bath, open-plan kitchen and living.';
+    await sendChatMessage();
+    await delay(500);
+    $('#chatInput').value = 'Master away from street, kitchen near garden. Prioritize living and master space.';
+    await sendChatMessage();
+    await delay(500);
+    await confirmBrief();
+  }
+
+  // 2. Pitcher (Pitch & Pack)
+  setPipelineDot(2, 'running');
+  await delay(500);
+  if (!state.intakeComplete) await runIntakeAgent();
+  navigateTo('pitcher');
+  await generateConcepts();
+  
+  // Wait for user to select a concept manually
+  showToast('Please select a concept (A, B, or C) to proceed.', 'info');
+  const selectedId = await new Promise(resolve => {
+    resolveConceptSelection = resolve;
+  });
+
+  // 4. Output
+  // The selectConcept(selectedId) call triggered by the user button click
+  // has already run selectConcept() and navigated to 'output'.
+  setStatusChip('Complete', 'complete');
+  showToast('Pipeline complete!', 'success');
+  state.pipelineRunning = false;
+  $('#runPipelineBtn').disabled = false;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAGE 0 — PLOT DESIGN CONTROLS & SUPPORT
+   ═══════════════════════════════════════════════════════════ */
+function closeValidationModal() {
+  $('#validationModal').classList.remove('active');
+}
+window.closeValidationModal = closeValidationModal;
+
+function syncEditorToUiControls() {
+  const editor = window.plotEditor;
+  if (!editor) return;
+
+  if (document.activeElement !== $('#plotCoordsJson')) {
+    $('#plotCoordsJson').value = JSON.stringify(editor.vertices);
+  }
+
+  renderVerticesTable();
+}
+
+function renderVerticesTable() {
+  const editor = window.plotEditor;
+  if (!editor) return;
+
+  const tbody = $('#verticesTableBody');
+  tbody.innerHTML = '';
+  editor.vertices.forEach((v, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="padding: 6px; text-align: center; color: var(--text-secondary);">V${idx}</td>
+      <td style="padding: 4px;"><input type="number" class="v-coord-input" data-idx="${idx}" data-coord="0" value="${v[0]}" style="width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; padding: 2px 6px; font-size: 11px;"></td>
+      <td style="padding: 4px;"><input type="number" class="v-coord-input" data-idx="${idx}" data-coord="1" value="${v[1]}" style="width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; padding: 2px 6px; font-size: 11px;"></td>
+      <td style="padding: 4px; text-align: center;">
+        <button class="btn btn-secondary delete-v-btn" data-idx="${idx}" style="padding: 2px 6px; font-size: 10px; color: var(--danger); border-color: rgba(239, 68, 68, 0.2); background: transparent;">✕</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.v-coord-input').forEach(input => {
+    input.addEventListener('change', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      const coordIdx = parseInt(e.target.dataset.coord);
+      const val = parseFloat(e.target.value) || 0;
+      editor.vertices[idx][coordIdx] = Math.max(0, Math.min(100, val));
+      editor.draw();
+      syncEditorToUiControls();
+      updatePlotDesignValidation();
+    });
+  });
+
+  tbody.querySelectorAll('.delete-v-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = parseInt(btn.dataset.idx);
+      if (editor.vertices.length <= 3) {
+        showToast("A lot boundary must have at least 3 vertices.", "warning");
+        return;
+      }
+      editor.vertices.splice(idx, 1);
+      editor.draw();
+      syncEditorToUiControls();
+      updatePlotDesignValidation();
+    });
+  });
+}
+
+function updatePlotDesignValidation() {
+  const editor = window.plotEditor;
+  if (!editor) return;
+
+  const vertices = editor.vertices;
+  const shrunk = editor.getShrunkPolygon();
+  
+  const lotArea = Math.round(editor.getArea(vertices));
+  const tXEl = document.getElementById('treeX');
+  const tYEl = document.getElementById('treeY');
+  const tREl = document.getElementById('treeRadius');
+  const tx_val = tXEl ? (parseFloat(tXEl.value) || 0) : 0;
+  const ty_val = tYEl ? (parseFloat(tYEl.value) || 0) : 0;
+  const tr_val = tREl ? (parseFloat(tREl.value) || 0) : 0;
+  const footprintArea = getBuildableArea(vertices, editor.setback_h, editor.setback_v, tx_val, ty_val, tr_val);
+  
+  const isGeometryValid = vertices.length >= 3 && !isSelfIntersecting(vertices);
+  const isFootprintPositive = shrunk && shrunk.length >= 3 && editor.isValid();
+  
+  let maxCoverage = 50;
+  const sbcText = $('#sbcRulesText').value;
+  const coverageMatch = sbcText.match(/Coverage[^\d]*(\d+)\s*%/i);
+  if (coverageMatch) {
+    maxCoverage = parseInt(coverageMatch[1]);
+  }
+
+  const coverageRatio = lotArea > 0 ? (footprintArea / lotArea) * 100 : 0;
+  const isCoverageValid = coverageRatio <= maxCoverage;
+
+  $('#valLotArea').textContent = lotArea.toLocaleString();
+  $('#valFootprintArea').textContent = isFootprintPositive ? footprintArea.toLocaleString() : '0';
+  $('#valCoverage').textContent = isFootprintPositive ? Math.round(coverageRatio) + '%' : '0%';
+
+  const z3Badge = $('#z3StatusBadge');
+  const z3Desc = $('#z3StatusDesc');
+  const z3Card = $('#z3StatusCard');
+
+  let errors = [];
+  if (!isGeometryValid) {
+    errors.push("Lot boundary is self-intersecting or has fewer than 3 vertices.");
+  }
+  if (!isFootprintPositive) {
+    errors.push("Habitable footprint collapsed (area < 100 sq ft). Reduce setbacks or expand boundary.");
+  }
+  if (!isCoverageValid) {
+    errors.push(`Buildable area exceeds maximum lot coverage limit of ${maxCoverage}% (current: ${Math.round(coverageRatio)}%).`);
+  }
+
+  if (errors.length === 0) {
+    z3Badge.className = 'badge badge-sat';
+    z3Badge.textContent = 'SAT';
+    z3Card.style.borderColor = 'var(--success)';
+    z3Card.style.background = 'rgba(34, 197, 94, 0.05)';
+    z3Desc.innerHTML = `
+      <div style="color:var(--success); font-weight:600; margin-bottom:4px;">SATISFIABLE (SAT) ✓</div>
+      Z3 SMT Solver verified all SBC constraints. Net buildable area is <strong>${footprintArea.toLocaleString()} sq ft</strong> (${Math.round(coverageRatio)}% lot coverage).
+    `;
+  } else {
+    z3Badge.className = 'badge badge-unsat';
+    z3Badge.textContent = 'UNSAT';
+    z3Card.style.borderColor = 'var(--danger)';
+    z3Card.style.background = 'rgba(239, 68, 68, 0.05)';
+    
+    let errorList = errors.map(e => `<li>${e}</li>`).join('');
+    z3Desc.innerHTML = `
+      <div style="color:var(--danger); font-weight:600; margin-bottom:4px;">UNSATISFIABLE (UNSAT) ✗</div>
+      Z3 Solver found conflicts with constraints:
+      <ul style="margin-top:4px; padding-left:16px; color:var(--text-secondary); font-size:11px;">${errorList}</ul>
+    `;
+  }
+}
+
+function initPlotDesign() {
+  const canvasId = 'plotEditorCanvas';
+  const editor = new PlotEditor(canvasId);
+  window.plotEditor = editor;
+
+  // Set default coordinates (Rectangle)
+  const defaultVertices = [[15, 15], [85, 15], [85, 85], [15, 85]];
+  editor.vertices = defaultVertices;
+  editor.setback_h = 5;
+  editor.setback_v = 15;
+
+  editor.onChangeCallback = () => {
+    syncEditorToUiControls();
+    updatePlotDesignValidation();
+  };
+
+  // Presets
+  $$('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.preset;
+      let newVerts = [];
+      if (type === 'rectangle') {
+        newVerts = [[15, 15], [85, 15], [85, 85], [15, 85]];
+      } else if (type === 'lshape') {
+        newVerts = [[10, 10], [50, 10], [50, 45], [80, 45], [80, 80], [10, 80]];
+      } else if (type === 'tshape') {
+        newVerts = [[15, 15], [75, 15], [75, 45], [55, 45], [55, 75], [35, 75], [35, 45], [15, 45]];
+      } else {
+        newVerts = [[20, 20], [60, 20], [60, 60], [20, 60]];
+      }
+      editor.vertices = newVerts;
+      editor.draw();
+      syncEditorToUiControls();
+      updatePlotDesignValidation();
+    });
+  });
+
+  // Snapping toggle
+  $('#toggleGridSnapping').addEventListener('change', e => {
+    editor.snapToGrid = e.target.checked;
+  });
+
+  // Coordinates textarea manual input
+  $('#plotCoordsJson').addEventListener('input', e => {
+    try {
+      const parsed = JSON.parse(e.target.value);
+      if (Array.isArray(parsed) && parsed.length >= 3 && parsed.every(p => Array.isArray(p) && p.length === 2 && typeof p[0] === 'number' && typeof p[1] === 'number')) {
+        editor.vertices = parsed;
+        editor.draw();
+        renderVerticesTable();
+        updatePlotDesignValidation();
+      }
+    } catch (err) {
+      // ignore parsing errors while typing
+    }
+  });
+
+  $('#addVertexBtn').addEventListener('click', () => {
+    const n = editor.vertices.length;
+    if (n >= 3) {
+      const p1 = editor.vertices[n - 1];
+      const p2 = editor.vertices[0];
+      const mid = [Math.round((p1[0] + p2[0]) / 2), Math.round((p1[1] + p2[1]) / 2)];
+      editor.vertices.push(mid);
+      editor.draw();
+      syncEditorToUiControls();
+      updatePlotDesignValidation();
+    }
+  });
+
+  $('#clearVerticesBtn').addEventListener('click', () => {
+    editor.vertices = [[20, 20], [60, 20], [60, 60]];
+    editor.draw();
+    syncEditorToUiControls();
+    updatePlotDesignValidation();
+  });
+
+  $('#validateProceedBtn').addEventListener('click', () => {
+    updatePlotDesignValidation();
+    
+    const errors = [];
+    const vertices = editor.vertices;
+    const shrunk = editor.getShrunkPolygon();
+    const lotArea = Math.round(editor.getArea(vertices));
+    const tXEl = document.getElementById('treeX');
+    const tYEl = document.getElementById('treeY');
+    const tREl = document.getElementById('treeRadius');
+    const tx_val = tXEl ? (parseFloat(tXEl.value) || 0) : 0;
+    const ty_val = tYEl ? (parseFloat(tYEl.value) || 0) : 0;
+    const tr_val = tREl ? (parseFloat(tREl.value) || 0) : 0;
+    const footprintArea = getBuildableArea(vertices, editor.setback_h, editor.setback_v, tx_val, ty_val, tr_val);
+    const isGeometryValid = vertices.length >= 3 && !isSelfIntersecting(vertices);
+    const isFootprintPositive = shrunk && shrunk.length >= 3 && editor.isValid();
+    
+    let maxCoverage = 50;
+    const sbcText = $('#sbcRulesText').value;
+    const coverageMatch = sbcText.match(/Coverage[^\d]*(\d+)\s*%/i);
+    if (coverageMatch) maxCoverage = parseInt(coverageMatch[1]);
+    const coverageRatio = lotArea > 0 ? (footprintArea / lotArea) * 100 : 0;
+    const isCoverageValid = coverageRatio <= maxCoverage;
+
+    if (!isGeometryValid) errors.push("Lot boundary is self-intersecting or has fewer than 3 vertices.");
+    if (!isFootprintPositive) errors.push("Habitable footprint collapsed (buildable area < 100 sq ft). Decrease your setbacks or drag boundary vertices to increase the lot size.");
+    if (!isCoverageValid) errors.push(`Buildable footprint coverage (${Math.round(coverageRatio)}%) exceeds Seattle Building Code maximum allowance of ${maxCoverage}%.`);
+
+    if (errors.length > 0) {
+      const modal = $('#validationModal');
+      const body = $('#validationModalText');
+      body.innerHTML = `
+        <p style="margin-bottom:12px;">The current plot design fails Seattle Building Code (SBC) constraints:</p>
+        <ul style="padding-left: 18px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
+          ${errors.map(e => `<li><strong>${e}</strong></li>`).join('')}
+        </ul>
+        <p>Please adjust the vertex handles, coordinates table, or setback values to resolve these constraints.</p>
+      `;
+      modal.classList.add('active');
+    } else {
+      MOCK.groundTruth.lot_polygon = vertices.map(v => [v[0], v[1]]);
+      MOCK.groundTruth.constraints.setbacks = {
+        front: 15,
+        rear: 15,
+        left: 5,
+        right: 5
+      };
+      
+      const xs = shrunk.map(p => p[0]);
+      const ys = shrunk.map(p => p[1]);
+      MOCK.groundTruth.buildable_box = {
+        x_min: Math.min(...xs),
+        y_min: Math.min(...ys),
+        x_max: Math.max(...xs),
+        y_max: Math.max(...ys)
+      };
+      MOCK.groundTruth.max_footprint_sqft = footprintArea;
+
+      state.lotWidth = Math.round(Math.max(...vertices.map(v => v[0])) - Math.min(...vertices.map(v => v[0])));
+      state.lotHeight = Math.round(Math.max(...vertices.map(v => v[1])) - Math.min(...vertices.map(v => v[1])));
+      
+      // Save tree protection zone parameters
+      const tx_val = parseFloat($('#treeX').value) || 75;
+      const ty_val = parseFloat($('#treeY').value) || 88;
+      const tr_val = parseFloat($('#treeRadius').value) || 12;
+      MOCK.groundTruth.constraints.tree_center = [tx_val, ty_val];
+      MOCK.groundTruth.constraints.tree_radius = tr_val;
+
+      setPipelineDot(0, 'done');
+      unlockPage('planning');
+      
+      showToast("Plot design validated successfully!", "success");
+      navigateTo('planning');
+    }
+  });
+
+  editor.draw();
+  syncEditorToUiControls();
+  updatePlotDesignValidation();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EVENT LISTENERS
+   ═══════════════════════════════════════════════════════════ */
+function bindEvents() {
+  $$('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (!item.classList.contains('locked')) navigateTo(item.dataset.page);
+      else showToast('Complete the previous step first.', 'warning');
+    });
+  });
+
+  $('#chatSendBtn').addEventListener('click', sendChatMessage);
+  $('#chatInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+  });
+
+  ['treeX','treeY','treeRadius'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', () => {
+        if (window.plotEditor) window.plotEditor.draw();
+      });
+    }
+  });
+
+  $('#runPipelineBtn').addEventListener('click', runFullPipeline);
+
+  $('#downloadDxfBtn').addEventListener('click', () => showToast('plotmyspace_layout.dxf downloaded', 'success'));
+  $('#downloadJsonBtn').addEventListener('click', () => showToast('verification_report.json downloaded', 'success'));
+
+  $('#fullscreenBtn').addEventListener('click', openFullscreen);
+  $('#fullscreenClose').addEventListener('click', () => $('#fullscreenOverlay').classList.remove('active'));
+
+  window.addEventListener('hashchange', () => {
+    const page = location.hash.slice(1) || 'plot-design';
+    if (PAGES.includes(page)) navigateTo(page);
+  });
+
+  window.addEventListener('resize', () => {
+    if (state.currentPage === 'plot-design' && window.plotEditor) window.plotEditor.draw();
+    if (state.currentPage === 'output') {
+      drawOutputCanvas($('#outputCanvas'));
+      const overlay = $('#fullscreenOverlay');
+      if (overlay.classList.contains('active')) {
+        const fc = $('#fullscreenCanvas');
+        fc.width = window.innerWidth * 0.95;
+        fc.height = window.innerHeight * 0.9;
+        drawOutputCanvas(fc, true, true);
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════ */
+function init() {
+  initPlotDesign();
+  initPlanning();
+  bindEvents();
+  location.hash = location.hash || '#plot-design';
+  const hash = location.hash.slice(1);
+  if (hash && PAGES.includes(hash) && state.unlockedPages.includes(hash)) navigateTo(hash);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
